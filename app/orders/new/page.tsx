@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarOrderPicker } from "@/components/calendar-order-picker"
 import { Plus, Minus, Trash2 } from "lucide-react"
+import { formatPriceLocal } from "@/lib/currency"
 
 interface Product {
   id: string
@@ -93,11 +94,8 @@ export default function NewOrderPage() {
     return orderItems.reduce((sum, item) => sum + item.unitPriceCents * item.qty, 0)
   }
 
-  const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(cents / 100)
+  const formatPriceLocalLocal = (cents: number) => {
+    return formatPriceLocal(cents)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -197,7 +195,7 @@ export default function NewOrderPage() {
                         <div className="flex-1">
                           <h4 className="font-medium">{product.title}</h4>
                           <p className="text-sm text-muted-foreground">{product.short_desc}</p>
-                          <p className="mt-1 font-semibold">{formatPrice(Number(product.price_cents))}</p>
+                          <p className="mt-1 font-semibold">{formatPriceLocal(Number(product.price_cents))}</p>
                         </div>
                         <Button type="button" onClick={() => addProduct(product)} size="sm">
                           <Plus className="h-4 w-4" />
@@ -240,7 +238,7 @@ export default function NewOrderPage() {
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <h5 className="font-medium">{item.product.title}</h5>
-                                <p className="text-sm text-muted-foreground">{formatPrice(item.unitPriceCents)}</p>
+                                <p className="text-sm text-muted-foreground">{formatPriceLocal(item.unitPriceCents)}</p>
                               </div>
                               <Button
                                 type="button"
@@ -277,7 +275,7 @@ export default function NewOrderPage() {
                       <div className="border-t pt-4">
                         <div className="flex items-center justify-between text-lg font-bold">
                           <span>Total</span>
-                          <span>{formatPrice(calculateTotal())}</span>
+                          <span>{formatPriceLocal(calculateTotal())}</span>
                         </div>
                       </div>
                     </>

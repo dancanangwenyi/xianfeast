@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
         short_desc: shortDesc || "",
         long_desc: longDesc || "",
         price_cents: priceCents,
-        currency: currency || "USD",
+        currency: currency || "KES",
         sku: sku || "",
         tags_csv: Array.isArray(tags) ? tags.join(",") : tags || "",
         diet_flags_csv: Array.isArray(dietFlags) ? dietFlags.join(",") : dietFlags || "",

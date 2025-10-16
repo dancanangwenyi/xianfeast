@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         status: "draft",
         scheduled_for: scheduledFor,
         total_cents: totalCents,
-        currency: "USD", // TODO: Get from business settings
+        currency: "KES", // TODO: Get from business settings
         notes: notes || "",
       },
       SHEET_COLUMNS.orders,

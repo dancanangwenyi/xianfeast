@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, ownerUserId, currency = "USD", timezone = "UTC", settings } = body
+    const { name, ownerUserId, currency = "KES", timezone = "Africa/Nairobi", settings } = body
 
     if (!name || !ownerUserId) {
       return NextResponse.json({ error: "name and ownerUserId are required" }, { status: 400 })

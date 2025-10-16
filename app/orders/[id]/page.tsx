@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, ArrowLeft } from "lucide-react"
+import { formatPrice as formatPriceUtil } from "@/lib/currency"
 
 interface OrderItem {
   id: string
@@ -75,10 +76,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const formatPrice = (cents: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(cents / 100)
+    return formatPriceUtil(cents, order?.currency as any)
   }
 
   const formatDate = (dateString: string) => {

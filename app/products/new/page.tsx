@@ -25,7 +25,7 @@ export default function NewProductPage() {
     shortDesc: "",
     longDesc: "",
     priceCents: "",
-    currency: "USD",
+    currency: "KES",
     sku: "",
     tags: "",
     dietFlags: "",
@@ -123,7 +123,7 @@ export default function NewProductPage() {
                     value={formData.priceCents}
                     onChange={(e) => setFormData({ ...formData, priceCents: e.target.value })}
                     required
-                    placeholder="1299 = $12.99"
+                    placeholder="1299 = KSh 12.99"
                   />
                 </div>
 
@@ -133,7 +133,7 @@ export default function NewProductPage() {
                     id="currency"
                     value={formData.currency}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    placeholder="USD"
+                    placeholder="KES"
                   />
                 </div>
               </div>

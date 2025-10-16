@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus } from "lucide-react"
+import { formatPrice as formatPriceUtil } from "@/lib/currency"
 
 interface Product {
   id: string
@@ -40,10 +41,7 @@ export default function ProductsPage() {
   }
 
   const formatPrice = (cents: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency || "USD",
-    }).format(cents / 100)
+    return formatPriceUtil(cents, currency as any)
   }
 
   return (

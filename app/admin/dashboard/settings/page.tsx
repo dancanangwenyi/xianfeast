@@ -40,7 +40,7 @@ import {
   CheckCircle,
   Info,
 } from "lucide-react"
-import { motion } from "framer-motion"
+import { getCurrencyOptions } from "@/lib/currency"
 
 interface SystemConfig {
   general: {
@@ -81,8 +81,8 @@ interface SystemConfig {
 export default function SettingsPage() {
   const [config, setConfig] = useState<SystemConfig>({
     general: {
-      defaultCurrency: "USD",
-      defaultTimezone: "UTC",
+      defaultCurrency: "KES",
+      defaultTimezone: "Africa/Nairobi",
       defaultLanguage: "en",
       maintenanceMode: false,
       registrationEnabled: true,
@@ -325,11 +325,11 @@ export default function SettingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                      {getCurrencyOptions().map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

@@ -92,8 +92,8 @@ export async function POST(request: NextRequest) {
           "", // owner_user_id (will be set when user is created)
           "pending", // status
           new Date().toISOString(), // created_at
-          currency || "USD",
-          timezone || "UTC",
+          currency || "KES",
+          timezone || "Africa/Nairobi",
           description || "",
         ]]
       }

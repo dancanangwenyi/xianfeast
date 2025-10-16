@@ -2,9 +2,10 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant dark-blue (&:is(.dark-blue *));
 
 /* Light theme colors - Enhanced contrast */
-@theme {
+.light {
   --color-background: #ffffff;
   --color-foreground: #0f172a;
   --color-muted: #f8fafc;
@@ -59,68 +60,124 @@
   --color-info-text: #1d4ed8;
 }
 
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-background: #0f172a;
-    --color-foreground: #f8fafc;
-    --color-muted: #1e293b;
-    --color-muted-foreground: #94a3b8;
-    --color-border: #334155;
-    --color-input: #1e293b;
-    --color-ring: #f87171;
-    --color-primary: #f87171;
-    --color-primary-foreground: #0f172a;
-    --color-secondary: #1e293b;
-    --color-secondary-foreground: #f8fafc;
-    --color-destructive: #f87171;
-    --color-destructive-foreground: #0f172a;
-    --color-card: #1e293b;
-    --color-card-foreground: #f8fafc;
-    --color-popover: #1e293b;
-    --color-popover-foreground: #f8fafc;
-    --color-accent: #2d1b1b;
-    --color-accent-foreground: #fca5a5;
-    
-    /* Custom XianFeast colors - Dark mode */
-    --color-xianfeast-red: #f87171;
-    --color-xianfeast-orange: #fb923c;
-    --color-xianfeast-gold: #fbbf24;
-    --color-xianfeast-crimson: #fca5a5;
-    --color-xianfeast-slate: #94a3b8;
-    --color-xianfeast-ivory: #1e293b;
-    
-    /* Enhanced contrast variants - Dark mode */
-    --color-text-primary: #f8fafc;
-    --color-text-secondary: #cbd5e1;
-    --color-text-muted: #94a3b8;
-    --color-text-inverse: #0f172a;
-    
-    /* Card variants - Dark mode */
-    --color-card-elevated: #1e293b;
-    --color-card-subtle: #0f172a;
-    --color-card-accent: #2d1b1b;
-    
-    /* Status colors with better contrast - Dark mode */
-    --color-success: #10b981;
-    --color-success-bg: #064e3b;
-    --color-success-text: #6ee7b7;
-    --color-warning: #f59e0b;
-    --color-warning-bg: #451a03;
-    --color-warning-text: #fcd34d;
-    --color-error: #f87171;
-    --color-error-bg: #2d1b1b;
-    --color-error-text: #fca5a5;
-    --color-info: #60a5fa;
-    --color-info-bg: #1e3a8a;
-    --color-info-text: #93c5fd;
-  }
+/* Dark theme - Classic */
+.dark {
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+  --color-border: #334155;
+  --color-input: #1e293b;
+  --color-ring: #f87171;
+  --color-primary: #f87171;
+  --color-primary-foreground: #0f172a;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #f8fafc;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #0f172a;
+  --color-card: #1e293b;
+  --color-card-foreground: #f8fafc;
+  --color-popover: #1e293b;
+  --color-popover-foreground: #f8fafc;
+  --color-accent: #2d1b1b;
+  --color-accent-foreground: #fca5a5;
+  
+  /* Custom XianFeast colors - Dark mode */
+  --color-xianfeast-red: #f87171;
+  --color-xianfeast-orange: #fb923c;
+  --color-xianfeast-gold: #fbbf24;
+  --color-xianfeast-crimson: #fca5a5;
+  --color-xianfeast-slate: #94a3b8;
+  --color-xianfeast-ivory: #1e293b;
+  
+  /* Enhanced contrast variants - Dark mode */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-inverse: #0f172a;
+  
+  /* Card variants - Dark mode */
+  --color-card-elevated: #1e293b;
+  --color-card-subtle: #0f172a;
+  --color-card-accent: #2d1b1b;
+  
+  /* Status colors with better contrast - Dark mode */
+  --color-success: #10b981;
+  --color-success-bg: #064e3b;
+  --color-success-text: #6ee7b7;
+  --color-warning: #f59e0b;
+  --color-warning-bg: #451a03;
+  --color-warning-text: #fcd34d;
+  --color-error: #f87171;
+  --color-error-bg: #2d1b1b;
+  --color-error-text: #fca5a5;
+  --color-info: #60a5fa;
+  --color-info-bg: #1e3a8a;
+  --color-info-text: #93c5fd;
+}
+
+/* Dark Blue theme - Deep blue variation */
+.dark-blue {
+  --color-background: #0c1220;
+  --color-foreground: #e2e8f0;
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+  --color-border: #334155;
+  --color-input: #1e293b;
+  --color-ring: #60a5fa;
+  --color-primary: #60a5fa;
+  --color-primary-foreground: #0c1220;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #e2e8f0;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #0c1220;
+  --color-card: #1e293b;
+  --color-card-foreground: #e2e8f0;
+  --color-popover: #1e293b;
+  --color-popover-foreground: #e2e8f0;
+  --color-accent: #1e3a8a;
+  --color-accent-foreground: #93c5fd;
+  
+  /* Custom XianFeast colors - Dark Blue mode */
+  --color-xianfeast-red: #f87171;
+  --color-xianfeast-orange: #fb923c;
+  --color-xianfeast-gold: #fbbf24;
+  --color-xianfeast-crimson: #fca5a5;
+  --color-xianfeast-slate: #94a3b8;
+  --color-xianfeast-ivory: #1e293b;
+  
+  /* Enhanced contrast variants - Dark Blue mode */
+  --color-text-primary: #e2e8f0;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-inverse: #0c1220;
+  
+  /* Card variants - Dark Blue mode */
+  --color-card-elevated: #1e293b;
+  --color-card-subtle: #0c1220;
+  --color-card-accent: #1e3a8a;
+  
+  /* Status colors with better contrast - Dark Blue mode */
+  --color-success: #10b981;
+  --color-success-bg: #064e3b;
+  --color-success-text: #6ee7b7;
+  --color-warning: #f59e0b;
+  --color-warning-bg: #451a03;
+  --color-warning-text: #fcd34d;
+  --color-error: #f87171;
+  --color-error-bg: #2d1b1b;
+  --color-error-text: #fca5a5;
+  --color-info: #60a5fa;
+  --color-info-bg: #1e3a8a;
+  --color-info-text: #93c5fd;
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--color-border);
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
   }
 }

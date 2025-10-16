@@ -58,7 +58,7 @@ import {
   Filter,
   BarChart3,
 } from "lucide-react"
-import { motion } from "framer-motion"
+import { formatPrice } from "@/lib/currency"
 
 interface Order {
   id: string
@@ -117,7 +117,7 @@ export default function OrdersPage() {
             customerEmail: "john@example.com",
             status: "confirmed",
             totalCents: 2450,
-            currency: "USD",
+            currency: "KES",
             itemsCount: 3,
             scheduledFor: "2024-10-16T19:30:00Z",
             createdAt: "2024-10-16T18:45:00Z",
@@ -152,7 +152,7 @@ export default function OrdersPage() {
             customerEmail: "jane@example.com",
             status: "preparing",
             totalCents: 1800,
-            currency: "USD",
+            currency: "KES",
             itemsCount: 2,
             scheduledFor: "2024-10-16T20:00:00Z",
             createdAt: "2024-10-16T19:15:00Z",
@@ -186,7 +186,7 @@ export default function OrdersPage() {
             customerEmail: "mike@example.com",
             status: "ready",
             totalCents: 3200,
-            currency: "USD",
+            currency: "KES",
             itemsCount: 4,
             scheduledFor: "2024-10-16T19:45:00Z",
             createdAt: "2024-10-16T18:30:00Z",
@@ -236,7 +236,7 @@ export default function OrdersPage() {
             customerEmail: "sarah@example.com",
             status: "completed",
             totalCents: 4500,
-            currency: "USD",
+            currency: "KES",
             itemsCount: 2,
             scheduledFor: "2024-10-16T19:00:00Z",
             createdAt: "2024-10-16T18:00:00Z",
@@ -270,7 +270,7 @@ export default function OrdersPage() {
             customerEmail: "david@example.com",
             status: "cancelled",
             totalCents: 2200,
-            currency: "USD",
+            currency: "KES",
             itemsCount: 3,
             scheduledFor: "2024-10-16T20:30:00Z",
             createdAt: "2024-10-16T19:00:00Z",
@@ -354,10 +354,7 @@ export default function OrdersPage() {
   }
 
   const formatCurrency = (cents: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-    }).format(cents / 100)
+    return formatPrice(cents, currency as any)
   }
 
   const formatDateTime = (dateString: string) => {
@@ -487,7 +484,7 @@ export default function OrdersPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-900">
-                {formatCurrency(orders.reduce((sum, o) => sum + o.totalCents, 0), "USD")}
+                {formatCurrency(orders.reduce((sum, o) => sum + o.totalCents, 0), "KES")}
               </div>
               <p className="text-xs text-green-600 flex items-center mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
@@ -541,7 +538,7 @@ export default function OrdersPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-medium">{formatCurrency(business.revenue, "USD")}</div>
+                  <div className="font-medium">{formatCurrency(business.revenue, "KES")}</div>
                   <div className="text-sm text-slate-500">Revenue</div>
                 </div>
               </motion.div>

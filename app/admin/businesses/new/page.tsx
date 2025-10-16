@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getCurrencyOptions } from "@/lib/currency"
 
 interface User {
   id: string
@@ -24,8 +25,8 @@ export default function NewBusinessPage() {
   const [formData, setFormData] = useState({
     name: "",
     ownerUserId: "",
-    currency: "USD",
-    timezone: "UTC",
+    currency: "KES",
+    timezone: "Africa/Nairobi",
   })
 
   useEffect(() => {
@@ -121,10 +122,11 @@ export default function NewBusinessPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="SGD">SGD</SelectItem>
+                      {getCurrencyOptions().map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -139,6 +141,7 @@ export default function NewBusinessPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Africa/Nairobi">Africa/Nairobi (EAT)</SelectItem>
                       <SelectItem value="UTC">UTC</SelectItem>
                       <SelectItem value="America/New_York">Eastern Time</SelectItem>
                       <SelectItem value="America/Chicago">Central Time</SelectItem>

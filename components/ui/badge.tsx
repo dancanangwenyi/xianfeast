@@ -10,19 +10,19 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          'border-transparent bg-red-600 text-white [a&]:hover:bg-red-700',
+          'border-transparent bg-red-600 text-white [a&]:hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600',
         secondary:
-          'border-transparent bg-slate-100 text-slate-900 [a&]:hover:bg-slate-200',
+          'border-transparent bg-slate-100 text-slate-900 [a&]:hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700',
         destructive:
-          'border-transparent bg-red-600 text-white [a&]:hover:bg-red-700 focus-visible:ring-red-500/20 dark:focus-visible:ring-red-500/40',
+          'border-transparent bg-red-600 text-white [a&]:hover:bg-red-700 focus-visible:ring-red-500/20 dark:focus-visible:ring-red-500/40 dark:bg-red-500 dark:hover:bg-red-600',
         outline:
-          'text-slate-700 border-slate-200 bg-white [a&]:hover:bg-slate-50 [a&]:hover:text-slate-900',
+          'text-slate-700 border-slate-200 bg-white [a&]:hover:bg-slate-50 [a&]:hover:text-slate-900 dark:text-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700',
         success:
-          'border-transparent bg-green-600 text-white [a&]:hover:bg-green-700',
+          'border-transparent bg-green-600 text-white [a&]:hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600',
         warning:
-          'border-transparent bg-orange-600 text-white [a&]:hover:bg-orange-700',
+          'border-transparent bg-orange-600 text-white [a&]:hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600',
         info:
-          'border-transparent bg-blue-600 text-white [a&]:hover:bg-blue-700',
+          'border-transparent bg-blue-600 text-white [a&]:hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600',
       },
     },
     defaultVariants: {

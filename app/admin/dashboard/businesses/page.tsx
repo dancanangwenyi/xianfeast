@@ -98,7 +98,7 @@ export default function BusinessesPage() {
     name: "",
     ownerEmail: "",
     ownerName: "",
-    currency: "USD",
+    currency: "KES",
     timezone: "UTC",
     description: "",
   })
@@ -121,7 +121,7 @@ export default function BusinessesPage() {
             productsCount: 45,
             ordersCount: 234,
             revenue: 15680,
-            currency: "USD",
+            currency: "KES",
             timezone: "America/New_York",
             createdAt: "2024-01-15",
             lastActivity: "2 hours ago",
@@ -140,7 +140,7 @@ export default function BusinessesPage() {
             productsCount: 32,
             ordersCount: 189,
             revenue: 12340,
-            currency: "USD",
+            currency: "KES",
             timezone: "America/Los_Angeles",
             createdAt: "2024-02-03",
             lastActivity: "1 day ago",
@@ -159,7 +159,7 @@ export default function BusinessesPage() {
             productsCount: 28,
             ordersCount: 67,
             revenue: 4560,
-            currency: "USD",
+            currency: "KES",
             timezone: "America/Chicago",
             createdAt: "2024-03-10",
             lastActivity: "3 days ago",
@@ -177,7 +177,7 @@ export default function BusinessesPage() {
             productsCount: 38,
             ordersCount: 0,
             revenue: 0,
-            currency: "USD",
+            currency: "KES",
             timezone: "America/New_York",
             createdAt: "2024-01-28",
             lastActivity: "1 week ago",
@@ -214,7 +214,7 @@ export default function BusinessesPage() {
         name: "",
         ownerEmail: "",
         ownerName: "",
-        currency: "USD",
+        currency: "KES",
         timezone: "UTC",
         description: "",
       })
@@ -340,7 +340,7 @@ export default function BusinessesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="KES">KES</SelectItem>
                       <SelectItem value="EUR">EUR</SelectItem>
                       <SelectItem value="GBP">GBP</SelectItem>
                       <SelectItem value="CAD">CAD</SelectItem>
