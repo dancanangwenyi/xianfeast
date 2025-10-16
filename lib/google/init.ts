@@ -5,12 +5,16 @@ export async function initializeSpreadsheet() {
   await createSheetIfNotExists("users", [
     "id",
     "email",
-    "password_hash",
-    "full_name",
-    "phone",
+    "name",
+    "hashed_password",
+    "roles_json",
+    "mfa_enabled",
+    "last_login",
     "status",
+    "invited_by",
+    "invite_token",
+    "invite_expiry",
     "created_at",
-    "last_login_at",
   ])
 
   await createSheetIfNotExists("user_roles", ["id", "user_id", "role_id", "business_id", "assigned_at"])

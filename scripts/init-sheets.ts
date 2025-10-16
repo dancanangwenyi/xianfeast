@@ -1,4 +1,8 @@
+import { config } from "dotenv"
 import { initializeSpreadsheet } from "../lib/google/init"
+
+// Load environment variables
+config()
 
 async function main() {
   console.log("🚀 Initializing Google Sheets structure...")

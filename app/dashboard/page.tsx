@@ -8,6 +8,11 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
+  // Redirect super admins to the admin dashboard
+  if (session.roles.includes("super_admin")) {
+    redirect("/admin/dashboard")
+  }
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl">

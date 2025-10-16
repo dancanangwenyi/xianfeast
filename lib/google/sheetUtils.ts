@@ -1,15 +1,15 @@
 import { getSheetsClient } from "./auth"
 
-const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-
-if (!SPREADSHEET_ID) {
-  throw new Error("GOOGLE_SPREADSHEET_ID is not set in environment variables")
-}
-
 /**
  * Create a sheet if it doesn't exist
  */
 export async function createSheetIfNotExists(sheetName: string, headers: string[]): Promise<void> {
+  const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
+
+  if (!SPREADSHEET_ID) {
+    throw new Error("GOOGLE_SPREADSHEET_ID is not set in environment variables")
+  }
+
   const sheets = getSheetsClient()
 
   try {

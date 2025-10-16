@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getSession } from "@/lib/auth/session"
+import { verifySession } from "@/lib/auth/session"
 
 // Routes that require authentication
 const protectedRoutes = ["/dashboard", "/admin", "/stalls", "/products", "/orders"]
@@ -10,21 +10,24 @@ const authRoutes = ["/login", "/auth/magic"]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const session = await getSession()
-
+  
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
 
-  // Redirect to login if accessing protected route without session
-  if (isProtectedRoute && !session) {
+  // Simple cookie check instead of JWT verification
+  const sessionCookie = request.cookies.get("xianfeast_session")
+  const hasSession = !!sessionCookie?.value
+
+  // Redirect to login if accessing protected route without session cookie
+  if (isProtectedRoute && !hasSession) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Redirect to dashboard if accessing auth routes with active session
-  if (isAuthRoute && session) {
+  // Redirect to dashboard if accessing auth routes with session cookie
+  if (isAuthRoute && hasSession) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
