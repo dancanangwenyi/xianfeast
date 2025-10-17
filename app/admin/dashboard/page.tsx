@@ -224,8 +224,8 @@ export default function AdminOverview() {
               <Building2 className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{stats.totalBusinesses}</div>
-              <p className="text-xs text-green-600 flex items-center mt-1">
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.totalBusinesses}</div>
+              <p className="text-xs text-green-600 dark:text-green-400 flex items-center mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 +{stats.weeklyGrowth}% this week
               </p>
@@ -244,8 +244,8 @@ export default function AdminOverview() {
               <Users className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{stats.activeUsers}</div>
-              <p className="text-xs text-blue-600 flex items-center mt-1">
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.activeUsers}</div>
+              <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center mt-1">
                 <Activity className="h-3 w-3 mr-1" />
                 12 online now
               </p>
@@ -264,8 +264,8 @@ export default function AdminOverview() {
               <ShoppingCart className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{stats.totalOrders.toLocaleString()}</div>
-              <p className="text-xs text-purple-600 flex items-center mt-1">
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.totalOrders.toLocaleString()}</div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 flex items-center mt-1">
                 <Calendar className="h-3 w-3 mr-1" />
                 This month
               </p>
@@ -284,8 +284,8 @@ export default function AdminOverview() {
               <CheckCircle className="h-4 w-4 text-slate-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{stats.pendingApprovals}</div>
-              <p className="text-xs text-orange-600 flex items-center mt-1">
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.pendingApprovals}</div>
+              <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center mt-1">
                 <Clock className="h-3 w-3 mr-1" />
                 Needs attention
               </p>
@@ -309,8 +309,8 @@ export default function AdminOverview() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{stats.aiInsightsGenerated}</div>
-              <p className="text-xs text-slate-500 mt-1">This week</p>
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.aiInsightsGenerated}</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">This week</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -328,8 +328,8 @@ export default function AdminOverview() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">${stats.monthlyRevenue.toLocaleString()}</div>
-              <p className="text-xs text-green-600 flex items-center mt-1">
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">${stats.monthlyRevenue.toLocaleString()}</div>
+              <p className="text-xs text-green-600 dark:text-green-400 flex items-center mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 +8.2% from last month
               </p>
@@ -350,9 +350,9 @@ export default function AdminOverview() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-slate-900">{stats.systemHealth}%</div>
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.systemHealth}%</div>
               <Progress value={stats.systemHealth} className="mt-2" />
-              <p className="text-xs text-green-600 mt-1">All systems operational</p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">All systems operational</p>
             </CardContent>
           </Card>
         </motion.div>

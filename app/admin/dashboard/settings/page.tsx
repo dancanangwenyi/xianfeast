@@ -40,6 +40,7 @@ import {
   CheckCircle,
   Info,
 } from "lucide-react"
+import { motion } from "framer-motion"
 import { getCurrencyOptions } from "@/lib/currency"
 
 interface SystemConfig {

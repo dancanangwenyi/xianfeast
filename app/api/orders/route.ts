@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { appendRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { checkPermission } from "@/lib/auth/permissions"
 import { v4 as uuidv4 } from "uuid"
 import { triggerWebhooks } from "@/lib/webhooks/dispatcher"
 
@@ -92,6 +93,12 @@ export async function POST(request: NextRequest) {
 
     if (!businessId || !stallId || !scheduledFor || !items || items.length === 0) {
       return NextResponse.json({ error: "businessId, stallId, scheduledFor, and items are required" }, { status: 400 })
+    }
+
+    // Check permissions - user must have orders:create
+    const hasPermission = await checkPermission(session, "orders:create")
+    if (!hasPermission) {
+      return NextResponse.json({ error: "Insufficient permissions to create orders" }, { status: 403 })
     }
 
     // Calculate total

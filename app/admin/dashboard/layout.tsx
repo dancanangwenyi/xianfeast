@@ -18,6 +18,7 @@ import {
 import {
   LayoutDashboard,
   Building2,
+  Store,
   Users,
   ShoppingCart,
   CheckCircle,
@@ -35,11 +36,11 @@ import {
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { ThemeSwitcher } from "@/components/theme-switcher"
-import { ThemeProvider } from "@/lib/theme"
 
 const navigation = [
   { name: "Overview", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Businesses", href: "/admin/dashboard/businesses", icon: Building2 },
+  { name: "Stalls", href: "/admin/dashboard/stalls", icon: Store },
   { name: "Users", href: "/admin/dashboard/users", icon: Users },
   { name: "Orders", href: "/admin/dashboard/orders", icon: ShoppingCart },
   { name: "Approvals", href: "/admin/dashboard/approvals", icon: CheckCircle },
@@ -58,9 +59,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        {/* Mobile sidebar overlay */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div className="fixed inset-0 bg-black/20" onClick={() => setSidebarOpen(false)} />
@@ -309,6 +309,5 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </div>
       </div>
-    </ThemeProvider>
-  )
+    )
 }

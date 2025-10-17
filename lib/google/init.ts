@@ -21,10 +21,36 @@ export async function initializeSpreadsheet() {
 
   await createSheetIfNotExists("roles", ["id", "business_id", "name", "permissions_csv", "created_at"])
 
-  // Business and stalls
-  await createSheetIfNotExists("businesses", ["id", "name", "owner_user_id", "status", "created_at"])
+  await createSheetIfNotExists("roles_permissions", [
+    "role_id",
+    "business_id", 
+    "role_name",
+    "permissions_csv",
+  ])
 
-  await createSheetIfNotExists("stalls", ["id", "business_id", "name", "description", "status", "created_at"])
+  // Business and stalls
+  await createSheetIfNotExists("businesses", [
+    "id",
+    "name",
+    "owner_user_id",
+    "currency",
+    "timezone",
+    "created_at",
+    "status",
+    "settings_json",
+  ])
+
+  await createSheetIfNotExists("stalls", [
+    "id",
+    "business_id",
+    "name",
+    "description",
+    "pickup_address",
+    "open_hours_json",
+    "capacity_per_day",
+    "created_at",
+    "status",
+  ])
 
   // Products
   await createSheetIfNotExists("products", [
@@ -43,17 +69,17 @@ export async function initializeSpreadsheet() {
     "inventory_qty",
     "status",
     "created_by",
+    "created_at",
   ])
 
   await createSheetIfNotExists("product_images", [
     "id",
     "product_id",
     "drive_file_id",
-    "url",
+    "url_cached",
+    "approved_by",
+    "approved_at",
     "order_index",
-    "status",
-    "uploaded_by",
-    "uploaded_at",
   ])
 
   // Orders
@@ -66,6 +92,7 @@ export async function initializeSpreadsheet() {
     "scheduled_for",
     "total_cents",
     "currency",
+    "created_at",
     "notes",
   ])
 
@@ -84,19 +111,33 @@ export async function initializeSpreadsheet() {
 
   await createSheetIfNotExists("otp_codes", ["id", "user_id", "code", "expires_at", "used_at"])
 
+  // Analytics and logging
+  await createSheetIfNotExists("analytics_events", [
+    "id",
+    "event_type",
+    "payload_json",
+    "created_at",
+  ])
+
   // Webhooks
   await createSheetIfNotExists("Webhooks", [
     "id",
-    "businessId",
+    "business_id",
+    "event",
     "url",
-    "events",
     "secret",
-    "status",
-    "description",
-    "createdAt",
+    "active",
   ])
 
-  await createSheetIfNotExists("WebhookLogs", ["id", "businessId", "url", "event", "status", "timestamp", "payload"])
+  await createSheetIfNotExists("WebhookLogs", [
+    "id",
+    "businessId",
+    "url",
+    "event",
+    "status",
+    "timestamp",
+    "payload",
+  ])
 
   console.log("✅ All sheets initialized successfully")
 }

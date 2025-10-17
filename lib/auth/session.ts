@@ -1,10 +1,14 @@
 import jwt from "jsonwebtoken"
 import { cookies } from "next/headers"
 import type { NextRequest } from "next/server"
+import { randomBytes } from "crypto"
 
 const JWT_SECRET = process.env.JWT_SECRET || "change-this-secret-in-production"
+const REFRESH_SECRET = process.env.REFRESH_SECRET || "change-this-refresh-secret-in-production"
 const SESSION_COOKIE_NAME = "xianfeast_session"
-const SESSION_DURATION = 24 * 60 * 60 // 24 hours in seconds
+const REFRESH_COOKIE_NAME = "xianfeast_refresh"
+const SESSION_DURATION = 15 * 60 // 15 minutes in seconds
+const REFRESH_DURATION = 7 * 24 * 60 * 60 // 7 days in seconds
 
 export type Permission =
   | "business:read"
@@ -31,14 +35,54 @@ export interface SessionPayload {
   email: string
   roles: string[]
   businessId?: string
+  sessionId: string
+  iat: number
+  exp: number
+}
+
+export interface RefreshPayload {
+  userId: string
+  sessionId: string
+  iat: number
+  exp: number
+}
+
+/**
+ * Generate a secure session ID
+ */
+export function generateSessionId(): string {
+  return randomBytes(32).toString('hex')
 }
 
 /**
  * Create a JWT session token
  */
-export function createSessionToken(payload: SessionPayload): string {
-  return jwt.sign(payload, JWT_SECRET, {
+export function createSessionToken(payload: Omit<SessionPayload, 'iat' | 'exp'>): string {
+  const now = Math.floor(Date.now() / 1000)
+  const sessionPayload: SessionPayload = {
+    ...payload,
+    iat: now,
+    exp: now + SESSION_DURATION,
+  }
+  
+  return jwt.sign(sessionPayload, JWT_SECRET, {
     expiresIn: SESSION_DURATION,
+  })
+}
+
+/**
+ * Create a refresh token
+ */
+export function createRefreshToken(payload: Omit<RefreshPayload, 'iat' | 'exp'>): string {
+  const now = Math.floor(Date.now() / 1000)
+  const refreshPayload: RefreshPayload = {
+    ...payload,
+    iat: now,
+    exp: now + REFRESH_DURATION,
+  }
+  
+  return jwt.sign(refreshPayload, REFRESH_SECRET, {
+    expiresIn: REFRESH_DURATION,
   })
 }
 
@@ -55,19 +99,55 @@ export function verifySessionToken(token: string): SessionPayload | null {
 }
 
 /**
- * Set session cookie (server-side only)
+ * Verify and decode a refresh token
  */
-export async function setSessionCookie(payload: SessionPayload) {
-  const token = createSessionToken(payload)
+export function verifyRefreshToken(token: string): RefreshPayload | null {
+  try {
+    const decoded = jwt.verify(token, REFRESH_SECRET) as RefreshPayload
+    return decoded
+  } catch (error) {
+    return null
+  }
+}
+
+/**
+ * Set session and refresh cookies (server-side only)
+ */
+export async function setSessionCookies(payload: Omit<SessionPayload, 'iat' | 'exp'>) {
+  const sessionId = generateSessionId()
+  const sessionPayload = { ...payload, sessionId }
+  
+  const sessionToken = createSessionToken(sessionPayload)
+  const refreshToken = createRefreshToken({ userId: payload.userId, sessionId })
+  
   const cookieStore = await cookies()
 
-  cookieStore.set(SESSION_COOKIE_NAME, token, {
+  // Set session cookie (short-lived)
+  cookieStore.set(SESSION_COOKIE_NAME, sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: SESSION_DURATION,
     path: "/",
   })
+
+  // Set refresh cookie (long-lived)
+  cookieStore.set(REFRESH_COOKIE_NAME, refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: REFRESH_DURATION,
+    path: "/",
+  })
+
+  return { sessionId, sessionToken, refreshToken }
+}
+
+/**
+ * Set session cookie (server-side only) - Legacy function for backward compatibility
+ */
+export async function setSessionCookie(payload: Omit<SessionPayload, 'iat' | 'exp'>) {
+  return setSessionCookies(payload)
 }
 
 /**
@@ -98,11 +178,57 @@ export async function verifySession(request: NextRequest): Promise<SessionPayloa
 }
 
 /**
- * Clear session cookie
+ * Clear session and refresh cookies
  */
 export async function clearSession() {
   const cookieStore = await cookies()
   cookieStore.delete(SESSION_COOKIE_NAME)
+  cookieStore.delete(REFRESH_COOKIE_NAME)
+}
+
+/**
+ * Refresh session using refresh token
+ */
+export async function refreshSession(request: NextRequest): Promise<SessionPayload | null> {
+  const refreshToken = request.cookies.get(REFRESH_COOKIE_NAME)?.value
+  
+  if (!refreshToken) {
+    return null
+  }
+
+  const refreshPayload = verifyRefreshToken(refreshToken)
+  if (!refreshPayload) {
+    return null
+  }
+
+  // Get user data from database
+  const { queryRows, SHEET_COLUMNS } = await import("@/lib/google/sheets")
+  const users = await queryRows("users", SHEET_COLUMNS.users, (row) => row.id === refreshPayload.userId)
+  
+  if (users.length === 0) {
+    return null
+  }
+
+  const user = users[0]
+  const roles = JSON.parse(user.roles_json || "[]")
+
+  // Create new session
+  const sessionPayload = {
+    userId: user.id,
+    email: user.email,
+    roles,
+    businessId: user.business_id,
+    sessionId: refreshPayload.sessionId,
+  }
+
+  // Set new cookies
+  await setSessionCookies(sessionPayload)
+
+  return {
+    ...sessionPayload,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + SESSION_DURATION,
+  }
 }
 
 /**

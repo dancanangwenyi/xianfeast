@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { appendRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { checkPermission } from "@/lib/auth/permissions"
 import { v4 as uuidv4 } from "uuid"
 
 /**
@@ -47,6 +48,12 @@ export async function POST(request: NextRequest) {
 
     if (!businessId || !name) {
       return NextResponse.json({ error: "businessId and name are required" }, { status: 400 })
+    }
+
+    // Check permissions - user must have stall:create for this business
+    const hasPermission = await checkPermission(session, "stall:create")
+    if (!hasPermission) {
+      return NextResponse.json({ error: "Insufficient permissions to create stalls" }, { status: 403 })
     }
 
     const stallId = uuidv4()

@@ -603,11 +603,11 @@ export default function SystemLogsPage() {
             <div className="p-4 bg-slate-50 rounded-lg dark:bg-slate-800">
               <h4 className="font-medium mb-2 text-slate-900 dark:text-slate-100">Most Frequent Events</h4>
               <div className="space-y-2">
-                {logs.reduce((acc, log) => {
+                {Object.entries(logs.reduce((acc, log) => {
                   const event = log.eventType
                   acc[event] = (acc[event] || 0) + 1
                   return acc
-                }, {} as Record<string, number>)
+                }, {} as Record<string, number>))
                 .sort((a, b) => b[1] - a[1])
                 .slice(0, 5)
                 .map(([event, count]) => (

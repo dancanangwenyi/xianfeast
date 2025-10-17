@@ -2,8 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { queryRows, updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
 import { verifyPassword } from "@/lib/auth/password"
 import { setSessionCookie } from "@/lib/auth/session"
-import { storeOTP } from "@/lib/auth/otp"
-import { sendOTPEmail } from "@/lib/email/send"
+import { storeOTP } from "@/lib/auth/mfa"
 
 /**
  * POST /api/auth/login
@@ -45,8 +44,7 @@ export async function POST(request: NextRequest) {
     // Check if MFA is enabled
     if (user.mfa_enabled === "true" || user.mfa_enabled === true) {
       // Generate and send OTP
-      const { otpId, code } = storeOTP(email)
-      await sendOTPEmail(email, code)
+      const { otpId, code } = await storeOTP(user.id, email)
 
       return NextResponse.json({
         success: true,
@@ -62,6 +60,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       email: user.email,
       roles,
+      businessId: user.business_id,
     })
 
     // Update last login

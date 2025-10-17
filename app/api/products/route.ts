@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { appendRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { checkPermission } from "@/lib/auth/permissions"
 import { v4 as uuidv4 } from "uuid"
 import { triggerWebhooks } from "@/lib/webhooks/dispatcher"
 
@@ -88,7 +89,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "stallId, businessId, title, and priceCents are required" }, { status: 400 })
     }
 
-    // TODO: Check permissions - user must have product:create for this stall
+    // Check permissions - user must have product:create for this stall
+    const hasPermission = await checkPermission(session, "product:create")
+    if (!hasPermission) {
+      return NextResponse.json({ error: "Insufficient permissions to create products" }, { status: 403 })
+    }
 
     const productId = uuidv4()
     await appendRow(
