@@ -63,6 +63,8 @@ import {
   DollarSign,
 } from "lucide-react"
 import { motion } from "framer-motion"
+import { SessionAwareLayout } from "@/components/layout/SessionAwareLayout"
+import { useToastNotifications } from "@/components/ui/toast"
 
 interface Business {
   id: string
@@ -92,6 +94,7 @@ export default function BusinessesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
+  const { showSuccess, showError, showWarning } = useToastNotifications()
 
   // Form state for creating new business
   const [newBusiness, setNewBusiness] = useState({
@@ -141,6 +144,7 @@ export default function BusinessesPage() {
         setBusinesses(transformedBusinesses)
       } catch (error) {
         console.error("Failed to fetch businesses:", error)
+        showError("Failed to load businesses", "Please refresh the page and try again.")
       } finally {
         setLoading(false)
       }
@@ -175,6 +179,12 @@ export default function BusinessesPage() {
       
       const data = await response.json()
       console.log("Business created successfully:", data)
+      
+      // Show success toast
+      showSuccess(
+        "Business created successfully!",
+        `"${newBusiness.name}" has been created and an invitation email sent to ${newBusiness.ownerEmail}.`
+      )
       
       // Close dialog and reset form
       setIsCreateDialogOpen(false)
@@ -217,7 +227,10 @@ export default function BusinessesPage() {
       }
     } catch (error) {
       console.error("Failed to create business:", error)
-      alert(`Failed to create business: ${error}`)
+      showError(
+        "Failed to create business",
+        error instanceof Error ? error.message : "Please try again."
+      )
     }
   }
 
@@ -277,7 +290,8 @@ export default function BusinessesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <SessionAwareLayout requiredRoles={['super_admin']}>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -720,6 +734,7 @@ export default function BusinessesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </SessionAwareLayout>
   )
 }

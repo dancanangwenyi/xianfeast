@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/lib/theme'
+import { ToastProvider } from '@/components/ui/toast'
+import { SessionProvider } from '@/hooks/useSessionManager.tsx'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -22,7 +24,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
         <ThemeProvider>
-          {children}
+          <SessionProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </SessionProvider>
         </ThemeProvider>
         <Analytics />
       </body>
