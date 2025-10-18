@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { verifySession, refreshSession } from "@/lib/auth/session"
+import { verifySessionToken } from "@/lib/auth/session-server"
 
 // Routes that require authentication
 const protectedRoutes = ["/dashboard", "/admin", "/stalls", "/products", "/orders", "/api/admin", "/api/users", "/api/stalls", "/api/products", "/api/orders"]
@@ -23,12 +23,12 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
 
-  // Try to get session
-  let session = await verifySession(request)
+  // Try to get session from cookie
+  const token = request.cookies.get("xianfeast_session")?.value
+  let session = null
   
-  // If no session but we have a refresh token, try to refresh
-  if (!session) {
-    session = await refreshSession(request)
+  if (token) {
+    session = verifySessionToken(token)
   }
 
   // Redirect to login if accessing protected route without session

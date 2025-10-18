@@ -107,86 +107,38 @@ export default function BusinessesPage() {
     const fetchBusinesses = async () => {
       setLoading(true)
       try {
-        // Mock data - replace with actual API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        const response = await fetch('/api/admin/businesses', {
+          method: 'GET',
+          credentials: 'include',
+        })
         
-        setBusinesses([
-          {
-            id: "1",
-            name: "Golden Dragon Restaurant",
-            ownerEmail: "owner@goldendragon.com",
-            ownerName: "Li Wei",
-            status: "active",
-            stallsCount: 3,
-            productsCount: 45,
-            ordersCount: 234,
-            revenue: 15680,
-            currency: "KES",
-            timezone: "America/New_York",
-            createdAt: "2024-01-15",
-            lastActivity: "2 hours ago",
-            description: "Authentic Chinese cuisine with modern twist",
-            address: "123 Main St, New York, NY",
-            website: "goldendragon.com",
-            phone: "+1-555-0123"
-          },
-          {
-            id: "2",
-            name: "Spice Garden",
-            ownerEmail: "chef@spicegarden.com",
-            ownerName: "Priya Sharma",
-            status: "active",
-            stallsCount: 2,
-            productsCount: 32,
-            ordersCount: 189,
-            revenue: 12340,
-            currency: "KES",
-            timezone: "America/Los_Angeles",
-            createdAt: "2024-02-03",
-            lastActivity: "1 day ago",
-            description: "Indian street food and traditional dishes",
-            address: "456 Oak Ave, Los Angeles, CA",
-            website: "spicegarden.com",
-            phone: "+1-555-0456"
-          },
-          {
-            id: "3",
-            name: "Tokyo Sushi Bar",
-            ownerEmail: "manager@tokyosushi.com",
-            ownerName: "Hiroshi Tanaka",
-            status: "pending",
-            stallsCount: 1,
-            productsCount: 28,
-            ordersCount: 67,
-            revenue: 4560,
-            currency: "KES",
-            timezone: "America/Chicago",
-            createdAt: "2024-03-10",
-            lastActivity: "3 days ago",
-            description: "Fresh sushi and Japanese cuisine",
-            address: "789 Pine St, Chicago, IL",
-            phone: "+1-555-0789"
-          },
-          {
-            id: "4",
-            name: "Mediterranean Bistro",
-            ownerEmail: "owner@medbistro.com",
-            ownerName: "Maria Rodriguez",
-            status: "disabled",
-            stallsCount: 2,
-            productsCount: 38,
-            ordersCount: 0,
-            revenue: 0,
-            currency: "KES",
-            timezone: "America/New_York",
-            createdAt: "2024-01-28",
-            lastActivity: "1 week ago",
-            description: "Mediterranean and Middle Eastern cuisine",
-            address: "321 Elm St, Boston, MA",
-            website: "medbistro.com",
-            phone: "+1-555-0321"
-          }
-        ])
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Transform DynamoDB data to match the expected format
+        const transformedBusinesses = data.businesses.map((business: any) => ({
+          id: business.id,
+          name: business.name,
+          ownerEmail: business.email,
+          ownerName: business.owner_user_id, // We'll need to fetch this from users table
+          status: business.status,
+          stallsCount: 0, // We'll need to fetch this from stalls table
+          productsCount: 0, // We'll need to fetch this from products table
+          ordersCount: 0, // We'll need to fetch this from orders table
+          revenue: 0, // We'll need to calculate this from orders
+          currency: business.settings_json ? JSON.parse(business.settings_json).currency || 'KES' : 'KES',
+          timezone: business.settings_json ? JSON.parse(business.settings_json).timezone || 'Africa/Nairobi' : 'Africa/Nairobi',
+          createdAt: business.created_at,
+          lastActivity: business.updated_at,
+          description: business.description,
+          address: business.address,
+          phone: business.phone,
+        }))
+        
+        setBusinesses(transformedBusinesses)
       } catch (error) {
         console.error("Failed to fetch businesses:", error)
       } finally {
@@ -207,20 +159,65 @@ export default function BusinessesPage() {
 
   const handleCreateBusiness = async () => {
     try {
-      // Mock API call - replace with actual API call
-      console.log("Creating business:", newBusiness)
+      const response = await fetch('/api/admin/businesses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(newBusiness),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create business')
+      }
+      
+      const data = await response.json()
+      console.log("Business created successfully:", data)
+      
+      // Close dialog and reset form
       setIsCreateDialogOpen(false)
       setNewBusiness({
         name: "",
         ownerEmail: "",
         ownerName: "",
         currency: "KES",
-        timezone: "UTC",
+        timezone: "Africa/Nairobi",
         description: "",
       })
+      
       // Refresh businesses list
+      const fetchResponse = await fetch('/api/admin/businesses', {
+        method: 'GET',
+        credentials: 'include',
+      })
+      
+      if (fetchResponse.ok) {
+        const fetchData = await fetchResponse.json()
+        const transformedBusinesses = fetchData.businesses.map((business: any) => ({
+          id: business.id,
+          name: business.name,
+          ownerEmail: business.email,
+          ownerName: business.owner_user_id,
+          status: business.status,
+          stallsCount: 0,
+          productsCount: 0,
+          ordersCount: 0,
+          revenue: 0,
+          currency: business.settings_json ? JSON.parse(business.settings_json).currency || 'KES' : 'KES',
+          timezone: business.settings_json ? JSON.parse(business.settings_json).timezone || 'Africa/Nairobi' : 'Africa/Nairobi',
+          createdAt: business.created_at,
+          lastActivity: business.updated_at,
+          description: business.description,
+          address: business.address,
+          phone: business.phone,
+        }))
+        setBusinesses(transformedBusinesses)
+      }
     } catch (error) {
       console.error("Failed to create business:", error)
+      alert(`Failed to create business: ${error}`)
     }
   }
 

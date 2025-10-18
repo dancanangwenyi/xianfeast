@@ -1,7 +1,8 @@
 /**
- * Email sending utilities
- * TODO: Integrate with your email provider (SendGrid, Resend, etc.)
+ * Email sending utilities using Nodemailer with Gmail SMTP
  */
+
+import nodemailer from 'nodemailer'
 
 export interface EmailOptions {
   to: string
@@ -10,31 +11,38 @@ export interface EmailOptions {
   text?: string
 }
 
+// Create transporter using Gmail SMTP
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER || 'dancangwe@gmail.com',
+    pass: process.env.SMTP_PASS || 'itru ttwr emzt vcbt'
+  }
+})
+
 /**
  * Send an email
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
-  // TODO: Implement actual email sending
-  // For now, just log to console
-  console.log("[EMAIL] Sending email:")
-  console.log(`To: ${options.to}`)
-  console.log(`Subject: ${options.subject}`)
-  console.log(`Body: ${options.text || options.html}`)
+  try {
+    console.log("[EMAIL] Sending email:")
+    console.log(`To: ${options.to}`)
+    console.log(`Subject: ${options.subject}`)
+    
+    const mailOptions = {
+      from: process.env.SMTP_USER || 'dancangwe@gmail.com',
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text || options.html.replace(/<[^>]*>/g, '') // Strip HTML for text version
+    }
 
-  // In production, use your email provider:
-  // const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Authorization': `Bearer ${process.env.EMAIL_API_KEY}`,
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify({
-  //     personalizations: [{ to: [{ email: options.to }] }],
-  //     from: { email: process.env.EMAIL_FROM },
-  //     subject: options.subject,
-  //     content: [{ type: 'text/html', value: options.html }],
-  //   }),
-  // })
+    const result = await transporter.sendMail(mailOptions)
+    console.log(`✅ Email sent successfully! Message ID: ${result.messageId}`)
+  } catch (error) {
+    console.error('❌ Failed to send email:', error)
+    throw error
+  }
 }
 
 /**

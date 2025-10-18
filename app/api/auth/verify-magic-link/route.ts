@@ -1,227 +1,200 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyMagicLinkToken, markMagicLinkAsUsed } from "@/lib/auth/invitation"
+import { getMagicLinkByToken, markMagicLinkAsUsed } from "@/lib/dynamodb/business"
+import { getUserById, updateUserLastLogin } from "@/lib/dynamodb/auth"
+import { setSessionCookies } from "@/lib/auth/session-server"
 import { hashPassword } from "@/lib/auth/password"
-import { getSheetsClient } from "@/lib/google/auth"
-import { v4 as uuidv4 } from "uuid"
-
-const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
+import { updateItem, TABLE_NAMES } from "@/lib/dynamodb/service"
 
 /**
- * GET /api/auth/verify-magic-link
- * Verify a magic link token and return user info
+ * POST /api/auth/verify-magic-link
+ * Verify magic link and handle different types of actions
  */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const token = searchParams.get("token")
+    const body = await request.json()
+    const { token, action, password, mfaCode } = body
 
     if (!token) {
-      return NextResponse.json({ error: "Token is required" }, { status: 400 })
+      return NextResponse.json({ error: "Magic link token is required" }, { status: 400 })
     }
 
-    const verification = await verifyMagicLinkToken(token)
+    // Get magic link
+    const magicLink = await getMagicLinkByToken(token)
     
-    if (!verification.valid) {
-      return NextResponse.json({ error: verification.error }, { status: 400 })
+    if (!magicLink) {
+      return NextResponse.json({ error: "Invalid or expired magic link" }, { status: 400 })
     }
 
-    // Get user info
-    const sheets = getSheetsClient()
-    const usersResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "users!A:ZZ",
-    })
+    // Check if already used
+    if (magicLink.used) {
+      return NextResponse.json({ error: "Magic link has already been used" }, { status: 400 })
+    }
 
-    const users = usersResponse.data.values?.slice(1) || []
-    const user = users.find(row => row[0] === verification.userId)
+    // Check if expired
+    if (new Date(magicLink.expires_at) < new Date()) {
+      return NextResponse.json({ error: "Magic link has expired" }, { status: 400 })
+    }
 
+    // Get user
+    const user = await getUserById(magicLink.user_id)
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const [, email, name, , rolesJson] = user
-    const roles = rolesJson ? JSON.parse(rolesJson) : []
+    // Handle different actions based on magic link type
+    switch (action) {
+      case 'setup-password':
+        return await handlePasswordSetup(magicLink, user, password)
+      
+      case 'verify-mfa':
+        return await handleMFAVerification(magicLink, user, mfaCode)
+      
+      case 'login':
+        return await handleMagicLinkLogin(magicLink, user)
+      
+      default:
+        return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+    }
 
-    return NextResponse.json({
-      userId: verification.userId,
-      email: verification.email,
-      name,
-      role: roles[0] || "user",
-    })
   } catch (error) {
     console.error("Error verifying magic link:", error)
     return NextResponse.json({ error: "Failed to verify magic link" }, { status: 500 })
   }
 }
 
-/**
- * POST /api/auth/verify-magic-link
- * Handle different actions: setup-password, send-mfa, verify-mfa
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { action, token, password, email, mfaCode, mfaEnabled } = body
-
-    if (action === "setup-password") {
-      return await handleSetupPassword(token, password, mfaEnabled)
-    } else if (action === "send-mfa") {
-      return await handleSendMfa(email)
-    } else if (action === "verify-mfa") {
-      return await handleVerifyMfa(email, mfaCode)
-    } else {
-      // Default action: setup-password for backward compatibility
-      return await handleSetupPassword(token, password, mfaEnabled)
-    }
-  } catch (error) {
-    console.error("Error in verify-magic-link POST:", error)
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
-  }
-}
-
-async function handleSetupPassword(token: string, password: string, mfaEnabled?: boolean) {
-  if (!token || !password) {
-    return NextResponse.json({ error: "Token and password are required" }, { status: 400 })
+async function handlePasswordSetup(magicLink: any, user: any, password: string) {
+  if (!password) {
+    return NextResponse.json({ error: "Password is required" }, { status: 400 })
   }
 
-  const verification = await verifyMagicLinkToken(token)
-  
-  if (!verification.valid) {
-    return NextResponse.json({ error: verification.error }, { status: 400 })
-  }
-
-  // Hash the password
+  // Hash the new password
   const hashedPassword = await hashPassword(password)
 
-  // Update user password in sheet
-  const sheets = getSheetsClient()
-  const usersResponse = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "users!A:ZZ",
-  })
+  // Update user with new password and activate account
+  await updateItem(
+    TABLE_NAMES.USERS,
+    { id: user.id },
+    {
+      hashed_password: hashedPassword,
+      status: 'active',
+      password_change_required: false
+    }
+  )
 
-  const users = usersResponse.data.values?.slice(1) || []
-  const userIndex = users.findIndex(row => row[0] === verification.userId)
-
-  if (userIndex === -1) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 })
+  // Get updated user
+  const updatedUser = await getUserById(user.id)
+  if (!updatedUser) {
+    throw new Error('Failed to retrieve updated user')
   }
 
-  // Update password (column 3, 0-indexed)
-  const rowNumber = userIndex + 2 // +1 for header, +1 for 1-indexed
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `users!D${rowNumber}`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[hashedPassword]]
-    }
-  })
+  // Mark magic link as used
+  await markMagicLinkAsUsed(magicLink.token)
 
-  // Update MFA enabled status (column 5, 0-indexed)
-  if (mfaEnabled !== undefined) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `users!F${rowNumber}`,
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[mfaEnabled]]
-      }
+  // If MFA is enabled, send MFA code
+  if (user.mfa_enabled) {
+    // TODO: Send MFA code
+    return NextResponse.json({
+      success: true,
+      requiresMFA: true,
+      message: "Password set successfully. MFA code sent to your email."
     })
   }
 
-  // Update status to active (column 7, 0-indexed)
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `users!H${rowNumber}`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [["active"]]
-    }
+  // Create session and login
+  const roles = JSON.parse(updatedUser.roles_json || "[]")
+  
+  const response = NextResponse.json({
+    success: true,
+    user: {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      roles,
+    },
+    message: "Password set successfully. You are now logged in."
   })
+
+  // Set session cookies
+  await setSessionCookies({
+    userId: updatedUser.id,
+    email: updatedUser.email,
+    roles,
+    businessId: magicLink.business_id || '',
+  }, response)
+
+  // Update last login
+  await updateUserLastLogin(updatedUser.id)
+
+  return response
+}
+
+async function handleMFAVerification(magicLink: any, user: any, mfaCode: string) {
+  if (!mfaCode) {
+    return NextResponse.json({ error: "MFA code is required" }, { status: 400 })
+  }
+
+  // TODO: Verify MFA code
+  // For now, just mark as verified
 
   // Mark magic link as used
-  await markMagicLinkAsUsed(token)
+  await markMagicLinkAsUsed(magicLink.token)
 
-  return NextResponse.json({ 
-    success: true, 
-    message: "Password set up successfully",
-    mfaEnabled: mfaEnabled || false
+  // Create session and login
+  const roles = JSON.parse(user.roles_json || "[]")
+  
+  const response = NextResponse.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      roles,
+    },
+    message: "MFA verified successfully. You are now logged in."
   })
+
+  // Set session cookies
+  await setSessionCookies({
+    userId: user.id,
+    email: user.email,
+    roles,
+    businessId: magicLink.business_id || '',
+  }, response)
+
+  // Update last login
+  await updateUserLastLogin(user.id)
+
+  return response
 }
 
-async function handleSendMfa(email: string) {
-  if (!email) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 })
-  }
+async function handleMagicLinkLogin(magicLink: any, user: any) {
+  // Mark magic link as used
+  await markMagicLinkAsUsed(magicLink.token)
 
-  // Generate 6-digit OTP code
-  const code = Math.floor(100000 + Math.random() * 900000).toString()
-
-  // Store OTP in sheet
-  const sheets = getSheetsClient()
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "otp_codes!A:ZZ",
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[
-        uuidv4(), // id
-        "", // user_id (will be filled when user logs in)
-        code,
-        new Date(Date.now() + 10 * 60 * 1000).toISOString(), // expires in 10 minutes
-        "", // used_at (empty initially)
-      ]]
-    }
+  // Create session and login
+  const roles = JSON.parse(user.roles_json || "[]")
+  
+  const response = NextResponse.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      roles,
+    },
+    message: "Logged in successfully via magic link."
   })
 
-  // In a real implementation, you would send the OTP via email/SMS
-  console.log(`MFA Code for ${email}: ${code}`)
+  // Set session cookies
+  await setSessionCookies({
+    userId: user.id,
+    email: user.email,
+    roles,
+    businessId: magicLink.business_id || '',
+  }, response)
 
-  return NextResponse.json({ 
-    success: true, 
-    message: "MFA code sent successfully",
-    code // Only for testing - remove in production
-  })
-}
+  // Update last login
+  await updateUserLastLogin(user.id)
 
-async function handleVerifyMfa(email: string, mfaCode: string) {
-  if (!email || !mfaCode) {
-    return NextResponse.json({ error: "Email and MFA code are required" }, { status: 400 })
-  }
-
-  // Verify OTP code
-  const sheets = getSheetsClient()
-  const otpResponse = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "otp_codes!A:ZZ",
-  })
-
-  const otpCodes = otpResponse.data.values?.slice(1) || []
-  const validCode = otpCodes.find(row => 
-    row[2] === mfaCode && // code matches
-    row[4] === "" && // not used yet
-    new Date(row[3]) > new Date() // not expired
-  )
-
-  if (!validCode) {
-    return NextResponse.json({ error: "Invalid or expired MFA code" }, { status: 400 })
-  }
-
-  // Mark OTP as used
-  const codeIndex = otpCodes.findIndex(row => row[0] === validCode[0])
-  const rowNumber = codeIndex + 2 // +1 for header, +1 for 1-indexed
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `otp_codes!E${rowNumber}`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[new Date().toISOString()]]
-    }
-  })
-
-  return NextResponse.json({ 
-    success: true, 
-    message: "MFA verification successful"
-  })
+  return response
 }

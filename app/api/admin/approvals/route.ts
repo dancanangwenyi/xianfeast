@@ -21,45 +21,6 @@ async function requireSuperAdmin(request: NextRequest) {
   }
 }
 
-// GET /api/admin/orders - Get all orders
-export async function GET(request: NextRequest) {
-  const authError = await requireSuperAdmin(request)
-  if (authError) return authError
-
-  try {
-    const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-    if (!SPREADSHEET_ID) {
-      return NextResponse.json({ error: "Spreadsheet ID not configured" }, { status: 500 })
-    }
-
-    const sheets = getSheetsClient()
-
-    // Get orders data
-    const ordersResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "orders!A:ZZ",
-    })
-
-    const orders = ordersResponse.data.values?.slice(1).map(row => ({
-      id: row[0],
-      businessId: row[1],
-      stallId: row[2],
-      customerUserId: row[3],
-      status: row[4],
-      scheduledFor: row[5],
-      totalCents: parseInt(row[6]) || 0,
-      currency: row[7],
-      notes: row[8],
-      createdAt: row[9],
-    })) || []
-
-    return NextResponse.json({ orders })
-  } catch (error) {
-    console.error("Error fetching orders:", error)
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 })
-  }
-}
-
 // GET /api/admin/approvals - Get pending approvals
 export async function GET(request: NextRequest) {
   const authError = await requireSuperAdmin(request)

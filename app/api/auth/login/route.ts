@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { queryRows, updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getUserWithRoles, updateUserLastLogin } from "@/lib/dynamodb/auth"
 import { verifyPassword } from "@/lib/auth/password"
-import { setSessionCookie } from "@/lib/auth/session"
+import { setSessionCookies } from "@/lib/auth/session-server"
 import { storeOTP } from "@/lib/auth/mfa"
 
 /**
@@ -17,34 +17,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // Find user by email
-    const users = await queryRows("users", SHEET_COLUMNS.users, (row) => row.email === email)
+    // Find user by email using DynamoDB
+    const userWithRoles = await getUserWithRoles(email)
 
-    if (users.length === 0) {
+    if (!userWithRoles) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    const user = users[0]
-
     // Check if user is active
-    if (user.status !== "active") {
+    if (userWithRoles.status !== "active") {
       return NextResponse.json({ error: "Account is not active" }, { status: 401 })
     }
 
     // Verify password
-    if (!user.hashed_password) {
+    if (!userWithRoles.hashed_password) {
       return NextResponse.json({ error: "Password not set. Please use magic link." }, { status: 401 })
     }
 
-    const isValidPassword = await verifyPassword(user.hashed_password, password)
+    const isValidPassword = await verifyPassword(password, userWithRoles.hashed_password)
     if (!isValidPassword) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
     // Check if MFA is enabled
-    if (user.mfa_enabled === "true" || user.mfa_enabled === true) {
+    if (userWithRoles.mfa_enabled === true) {
       // Generate and send OTP
-      const { otpId, code } = await storeOTP(user.id, email)
+      const { otpId, code } = await storeOTP(userWithRoles.id, email)
 
       return NextResponse.json({
         success: true,
@@ -55,26 +53,31 @@ export async function POST(request: NextRequest) {
     }
 
     // No MFA - create session directly
-    const roles = JSON.parse(user.roles_json || "[]")
-    await setSessionCookie({
-      userId: user.id,
-      email: user.email,
-      roles,
-      businessId: user.business_id,
-    })
-
-    // Update last login
-    await updateRow("users", user.id, { last_login: new Date().toISOString() }, SHEET_COLUMNS.users)
-
-    return NextResponse.json({
+    const roles = JSON.parse(userWithRoles.roles_json || "[]")
+    
+    const response = NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
+        id: userWithRoles.id,
+        email: userWithRoles.email,
+        name: userWithRoles.name,
         roles,
+        password_change_required: userWithRoles.password_change_required,
       },
     })
+
+    // Set session cookies
+    await setSessionCookies({
+      userId: userWithRoles.id,
+      email: userWithRoles.email,
+      roles,
+      businessId: '', // DynamoDB users don't have business_id directly
+    }, response)
+
+    // Update last login
+    await updateUserLastLogin(userWithRoles.id)
+
+    return response
   } catch (error) {
     console.error("Error during login:", error)
     return NextResponse.json({ error: "Login failed" }, { status: 500 })

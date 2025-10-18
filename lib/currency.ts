@@ -65,6 +65,10 @@ export function formatPrice(cents: number, currency: CurrencyCode = DEFAULT_CURR
   }).format(cents / 100)
 }
 
+export function formatPriceLocal(cents: number, currency: CurrencyCode = DEFAULT_CURRENCY): string {
+  return formatPrice(cents, currency)
+}
+
 export function getCurrencySymbol(currency: CurrencyCode = DEFAULT_CURRENCY): string {
   return CURRENCIES[currency].symbol
 }

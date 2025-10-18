@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySession } from "@/lib/auth/session"
-import { getSheetsClient } from "@/lib/google/auth"
+import { createBusiness, getAllBusinesses, updateBusiness } from "@/lib/dynamodb/business"
+import { getUserByEmail, createUserRoleRelationship } from "@/lib/dynamodb/auth"
+import { createMagicLink } from "@/lib/dynamodb/business"
+import { sendMagicLinkEmail } from "@/lib/email/send"
 import { v4 as uuidv4 } from "uuid"
-import { createInvitation } from "@/lib/auth/invitation"
+import { hashPassword } from "@/lib/auth/password"
+import { putItem, TABLE_NAMES } from "@/lib/dynamodb/service"
 
 // Middleware to check super admin role
 async function requireSuperAdmin(request: NextRequest) {
@@ -29,28 +33,8 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   try {
-    const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-    if (!SPREADSHEET_ID) {
-      return NextResponse.json({ error: "Spreadsheet ID not configured" }, { status: 500 })
-    }
-
-    const sheets = getSheetsClient()
-
-    // Get businesses data
-    const businessesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "businesses!A:ZZ",
-    })
-
-    const businesses = businessesResponse.data.values?.slice(1).map(row => ({
-      id: row[0],
-      name: row[1],
-      ownerUserId: row[2],
-      status: row[3],
-      createdAt: row[4],
-      // Add more fields as needed
-    })) || []
-
+    const businesses = await getAllBusinesses()
+    
     return NextResponse.json({ businesses })
   } catch (error) {
     console.error("Error fetching businesses:", error)
@@ -65,135 +49,109 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { name, ownerEmail, ownerName, currency, timezone, description } = body
+    const { name, ownerEmail, ownerName, currency, timezone, description, address, phone } = body
 
     if (!name || !ownerEmail || !ownerName) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ error: "Missing required fields: name, ownerEmail, ownerName" }, { status: 400 })
     }
 
-    const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-    if (!SPREADSHEET_ID) {
-      return NextResponse.json({ error: "Spreadsheet ID not configured" }, { status: 500 })
+    // Check if user already exists
+    const existingUser = await getUserByEmail(ownerEmail)
+    if (existingUser) {
+      return NextResponse.json({ error: "User with this email already exists" }, { status: 400 })
     }
 
-    const sheets = getSheetsClient()
-
-    // Generate business ID
-    const businessId = uuidv4()
-
-    // Get current businesses count to determine row number
-    const businessesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "businesses!A:A",
-    })
-    const businessRowNumber = (businessesResponse.data.values?.length || 1) + 1 // +1 for header, +1 for new row
-
-    // Create business record
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "businesses!A:ZZ",
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[
-          businessId,
-          name,
-          "", // owner_user_id (will be set when user is created)
-          currency || "KES",
-          timezone || "Africa/Nairobi",
-          new Date().toISOString(), // created_at
-          "pending", // status
-          description || "", // settings_json
-        ]]
-      }
-    })
-
-    // Create business owner user record
+    // Create business owner user
     const ownerUserId = uuidv4()
-    const inviteToken = uuidv4()
-    const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+    const tempPassword = `temp_${Math.random().toString(36).substr(2, 8)}`
+    const hashedPassword = await hashPassword(tempPassword)
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "users!A:ZZ",
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[
-          ownerUserId,
-          ownerEmail,
-          ownerName,
-          "", // hashed_password (empty for invited users)
-          JSON.stringify(["business_owner"]), // roles_json
-          false, // mfa_enabled
-          "", // last_login
-          "invited", // status
-          "", // invited_by (could be set to current user)
-          inviteToken, // invite_token
-          inviteExpiry, // invite_expiry
-          new Date().toISOString(), // created_at
-        ]]
-      }
-    })
-
-    // Update business with owner user ID
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `businesses!C${businessRowNumber}`, // Update owner_user_id
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[ownerUserId]]
-      }
-    })
-
-    // Get the business_owner role ID from the roles sheet
-    const rolesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "roles!A:C", // id, business_id, name
-    })
-    const businessOwnerRole = rolesResponse.data.values?.find(row => row[2] === "business_owner")
-    const businessOwnerRoleId = businessOwnerRole ? businessOwnerRole[0] : null
-
-    if (businessOwnerRoleId) {
-      // Create user-role relationship
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: "user_roles!A:ZZ",
-        valueInputOption: "RAW",
-        requestBody: {
-          values: [[
-            uuidv4(), // id
-            ownerUserId, // user_id
-            businessOwnerRoleId, // role_id
-            businessId, // business_id
-            new Date().toISOString(), // assigned_at
-          ]]
-        }
-      })
+    const user = {
+      id: ownerUserId,
+      email: ownerEmail,
+      name: ownerName,
+      hashed_password: hashedPassword,
+      roles_json: JSON.stringify(['business_owner']),
+      mfa_enabled: false,
+      last_login: '',
+      status: 'invited',
+      invited_by: 'super_admin',
+      invite_token: '',
+      invite_expiry: '',
+      created_at: new Date().toISOString(),
+      password_change_required: true
     }
 
-    // Send invitation email to owner
-    try {
-      const invitationResult = await createInvitation({
-        userId: ownerUserId,
-        email: ownerEmail,
-        name: ownerName,
-        role: "business_owner",
-        businessId: businessId,
-        invitedBy: "super_admin", // Could be the current user's ID
-      })
+    await putItem(TABLE_NAMES.USERS, user)
 
-      if (!invitationResult.success) {
-        console.error("Failed to send invitation email:", invitationResult.error)
-        // Don't fail the entire operation, but log the error
-      }
+    // Create business
+    const business = await createBusiness({
+      name,
+      description: description || '',
+      address: address || '',
+      phone: phone || '',
+      email: ownerEmail,
+      owner_user_id: ownerUserId,
+      status: 'pending',
+      settings_json: JSON.stringify({
+        currency: currency || 'KES',
+        timezone: timezone || 'Africa/Nairobi',
+        created_by: 'super_admin'
+      })
+    })
+
+    // Create business_owner role for this business
+    const roleId = uuidv4()
+    const role = {
+      id: roleId,
+      business_id: business.id,
+      name: 'business_owner',
+      permissions_csv: 'business.read,business.update,stall.create,stall.read,stall.update,stall.delete,product.create,product.read,product.update,product.delete,user.invite,user.read,user.update,order.read,analytics.read',
+      created_at: new Date().toISOString()
+    }
+
+    await putItem(TABLE_NAMES.ROLES, role)
+
+    // Create user-role relationship
+    await createUserRoleRelationship(ownerUserId, roleId, business.id)
+
+    // Create magic link for business invitation
+    const magicToken = uuidv4()
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+
+    await createMagicLink({
+      token: magicToken,
+      user_id: ownerUserId,
+      business_id: business.id,
+      type: 'business_invitation',
+      expires_at: expiresAt,
+      used: false
+    })
+
+    // Send invitation email
+    try {
+      const magicLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/magic?token=${magicToken}`
+      
+      await sendMagicLinkEmail(ownerEmail, magicLink)
+      
+      console.log(`📧 Business invitation sent to ${ownerEmail}`)
+      console.log(`   Business: ${name}`)
+      console.log(`   Magic Link: ${magicLink}`)
     } catch (emailError) {
-      console.error("Error sending invitation email:", emailError)
+      console.error('❌ Failed to send business invitation email:', emailError)
       // Don't fail the entire operation, but log the error
     }
 
     return NextResponse.json({ 
       success: true, 
-      businessId,
-      ownerUserId,
+      business: {
+        id: business.id,
+        name: business.name,
+        status: business.status,
+        owner_email: ownerEmail,
+        owner_name: ownerName,
+        created_at: business.created_at
+      },
       message: "Business created successfully. Invitation sent to owner." 
     })
   } catch (error) {
@@ -210,46 +168,23 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   try {
     const businessId = params.id
     const body = await request.json()
-    const { status, name, description } = body
+    const { status, name, description, address, phone } = body
 
-    const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-    if (!SPREADSHEET_ID) {
-      return NextResponse.json({ error: "Spreadsheet ID not configured" }, { status: 500 })
-    }
-
-    const sheets = getSheetsClient()
-
-    // Get current business data
-    const businessesResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "businesses!A:ZZ",
+    const updatedBusiness = await updateBusiness(businessId, {
+      status,
+      name,
+      description,
+      address,
+      phone,
     })
 
-    const businesses = businessesResponse.data.values || []
-    const businessIndex = businesses.findIndex(row => row[0] === businessId)
-
-    if (businessIndex === -1) {
+    if (!updatedBusiness) {
       return NextResponse.json({ error: "Business not found" }, { status: 404 })
     }
 
-    // Update business data
-    const updatedBusiness = [...businesses[businessIndex]]
-    if (status !== undefined) updatedBusiness[3] = status
-    if (name !== undefined) updatedBusiness[1] = name
-    if (description !== undefined) updatedBusiness[7] = description
-
-    // Update the row in the sheet
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `businesses!A${businessIndex + 1}:ZZ${businessIndex + 1}`,
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [updatedBusiness]
-      }
-    })
-
     return NextResponse.json({ 
       success: true, 
+      business: updatedBusiness,
       message: "Business updated successfully" 
     })
   } catch (error) {

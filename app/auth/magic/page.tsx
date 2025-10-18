@@ -1,101 +1,98 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, AlertTriangle, Loader2 } from "lucide-react"
+import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { Eye, EyeOff, Lock, Mail, User, CheckCircle } from 'lucide-react'
 
 export default function MagicLinkPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const token = searchParams.get("token")
-
-  const [step, setStep] = useState<"verifying" | "password" | "mfa" | "success" | "error">("verifying")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [otpCode, setOtpCode] = useState("")
+  const token = searchParams.get('token')
+  
+  const [step, setStep] = useState<'password' | 'mfa' | 'success'>('password')
+  const [formData, setFormData] = useState({
+    password: '',
+    confirmPassword: '',
+    mfaCode: ''
+  })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [userInfo, setUserInfo] = useState<{ name: string; email: string; role: string } | null>(null)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (!token) {
-      setStep("error")
-      setError("Invalid or missing invitation link")
-      return
-    }
-
-    verifyToken()
-  }, [token])
-
-  const verifyToken = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`/api/auth/verify-magic-link?token=${token}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        setStep("error")
-        setError(data.error || "Invalid invitation link")
-        return
-      }
-
-      setUserInfo({
-        name: data.name,
-        email: data.email,
-        role: data.role,
-      })
-      setStep("password")
-    } catch (err) {
-      setStep("error")
-      setError("Failed to verify invitation link")
-    } finally {
-      setLoading(false)
-    }
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+              Invalid Link
+                </h1>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              This magic link is invalid or has expired. Please request a new invitation.
+            </p>
+            <button
+              onClick={() => router.push('/login')}
+              className="w-full bg-slate-900 dark:bg-slate-700 text-white py-3 px-6 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-slate-600 transition-colors"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const handlePasswordSetup = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
+    setLoading(true)
+    setError('')
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
       return
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long")
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long')
+      setLoading(false)
       return
     }
 
     try {
-      setLoading(true)
-      const response = await fetch("/api/auth/setup-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+      const response = await fetch('/api/auth/verify-magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          action: 'setup-password',
+          password: formData.password,
+        }),
       })
 
       const data = await response.json()
 
-      if (!response.ok) {
-        setError(data.error || "Failed to set up password")
-        return
+      if (data.success) {
+        if (data.requiresMFA) {
+          setStep('mfa')
+        } else {
+          setStep('success')
+          setTimeout(() => {
+            router.push('/dashboard')
+          }, 2000)
+        }
+      } else {
+        setError(data.error || 'Failed to set password')
       }
-
-      // Send MFA code
-      await fetch("/api/auth/send-mfa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userInfo?.email }),
-      })
-
-      setStep("mfa")
     } catch (err) {
-      setError("An error occurred during password setup")
+      setError('An error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -103,203 +100,205 @@ export default function MagicLinkPage() {
 
   const handleMFAVerification = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (otpCode.length !== 6) {
-      setError("Please enter a valid 6-digit code")
-      return
-    }
+    setLoading(true)
+    setError('')
 
     try {
-      setLoading(true)
-      const response = await fetch("/api/auth/verify-mfa", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, code: otpCode }),
+      const response = await fetch('/api/auth/verify-magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          action: 'verify-mfa',
+          mfaCode: formData.mfaCode,
+        }),
       })
 
       const data = await response.json()
 
-      if (!response.ok) {
-        setError(data.error || "Invalid verification code")
-        return
+      if (data.success) {
+        setStep('success')
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 2000)
+      } else {
+        setError(data.error || 'Invalid MFA code')
       }
-
-      setStep("success")
-      
-      // Redirect to appropriate dashboard after 2 seconds
-      setTimeout(() => {
-        if (data.role === "super_admin") {
-          router.push("/admin/dashboard")
-        } else {
-          router.push("/dashboard")
-        }
-      }, 2000)
     } catch (err) {
-      setError("An error occurred during verification")
+      setError('An error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const renderStep = () => {
-    switch (step) {
-      case "verifying":
-        return (
-          <div className="text-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-red-600" />
-            <p className="text-slate-600">Verifying your invitation link...</p>
-          </div>
-        )
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-red-50/30 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8"
+        >
+          {step === 'password' && (
+            <>
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Lock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                  Set Your Password
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Complete your account setup by creating a secure password
+                </p>
+              </div>
 
-      case "password":
-        return (
-          <form onSubmit={handlePasswordSetup} className="space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-slate-900">Welcome, {userInfo?.name}!</h2>
-              <p className="text-slate-600">Set up your password to get started</p>
-              <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-red-50 text-red-700 border border-red-200">
-                Role: {userInfo?.role}
+              <form onSubmit={handlePasswordSetup} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-4 py-3 pl-12 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                      placeholder="Enter your password"
+                      required
+                    />
+                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={formData.confirmPassword}
+                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                      className="w-full px-4 py-3 pl-12 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                      placeholder="Confirm your password"
+                      required
+                    />
+                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                    <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 px-6 rounded-xl font-semibold transition-colors"
+                >
+                  {loading ? 'Setting up...' : 'Complete Setup'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {step === 'mfa' && (
+            <>
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                  Verify Your Email
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Enter the verification code sent to your email
+                </p>
+              </div>
+
+              <form onSubmit={handleMFAVerification} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Verification Code
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.mfaCode}
+                      onChange={(e) => setFormData({ ...formData, mfaCode: e.target.value })}
+                      className="w-full px-4 py-3 pl-12 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-center text-2xl tracking-widest"
+                      placeholder="000000"
+                      maxLength={6}
+                      required
+                    />
+                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                    <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-3 px-6 rounded-xl font-semibold transition-colors"
+                >
+                  {loading ? 'Verifying...' : 'Verify & Complete'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {step === 'success' && (
+            <div className="text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6"
+              >
+                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </motion.div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                Welcome to XianFeast!
+              </h1>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                Your account has been set up successfully. Redirecting to your dashboard...
+              </p>
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                <motion.div
+                  className="bg-green-600 h-2 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 2 }}
+                />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter a secure password"
-                required
-                minLength={8}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your password"
-                required
-                minLength={8}
-              />
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Setting up password...
-                </>
-              ) : (
-                "Set Up Password"
-              )}
-            </Button>
-          </form>
-        )
-
-      case "mfa":
-        return (
-          <form onSubmit={handleMFAVerification} className="space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-slate-900">Two-Factor Authentication</h2>
-              <p className="text-slate-600">Enter the verification code sent to your email</p>
-              <p className="text-sm text-slate-500">{userInfo?.email}</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="otp">Verification Code</Label>
-              <Input
-                id="otp"
-                type="text"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="000000"
-                maxLength={6}
-                className="text-center text-2xl tracking-widest"
-                required
-              />
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                "Verify & Complete Setup"
-              )}
-            </Button>
-          </form>
-        )
-
-      case "success":
-        return (
-          <div className="text-center space-y-4">
-            <CheckCircle className="h-16 w-16 mx-auto text-green-600" />
-            <h2 className="text-2xl font-bold text-slate-900">Setup Complete!</h2>
-            <p className="text-slate-600">Welcome to XianFeast, {userInfo?.name}!</p>
-            <p className="text-sm text-slate-500">Redirecting to your dashboard...</p>
-          </div>
-        )
-
-      case "error":
-        return (
-          <div className="text-center space-y-4">
-            <AlertTriangle className="h-16 w-16 mx-auto text-red-600" />
-            <h2 className="text-2xl font-bold text-slate-900">Invalid Invitation</h2>
-            <p className="text-slate-600">{error}</p>
-            <Button onClick={() => router.push("/login")} variant="outline">
-              Go to Login
-            </Button>
-          </div>
-        )
-
-      default:
-        return null
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-2xl">
-          <CardHeader className="text-center space-y-4 pb-8">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-2xl font-bold text-white">🍜</span>
-            </div>
-            <div>
-              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                XianFeast
-              </CardTitle>
-              <CardDescription className="text-gray-600 text-lg font-medium">
-                Complete Your Setup
-              </CardDescription>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="px-8 pb-8">
-            {renderStep()}
-          </CardContent>
-        </Card>
+          )}
+        </motion.div>
       </div>
     </div>
   )
