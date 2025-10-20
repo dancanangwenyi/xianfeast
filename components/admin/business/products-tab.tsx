@@ -307,20 +307,26 @@ export function ProductsTab({ businessId }: ProductsTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Products Management</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage products, pricing, and availability across all stalls
-          </p>
-        </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Product
-            </Button>
-          </DialogTrigger>
+      <div className="bg-gradient-to-r from-card via-card to-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                <Package className="h-4 w-4 text-white" />
+              </div>
+              Products Management
+            </h3>
+            <p className="text-sm text-muted-foreground font-medium mt-2">
+              Manage products, pricing, and availability across all stalls
+            </p>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white shadow-md">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Product
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Product</DialogTitle>
@@ -462,6 +468,7 @@ export function ProductsTab({ businessId }: ProductsTabProps) {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {products.length === 0 ? (

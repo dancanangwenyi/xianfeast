@@ -237,20 +237,26 @@ export function UsersTab({ businessId }: UsersTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Users Management</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage users, roles, and permissions for this business
-          </p>
-        </div>
-        <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Invite User
-            </Button>
-          </DialogTrigger>
+      <div className="bg-gradient-to-r from-card via-card to-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                <Users className="h-4 w-4 text-white" />
+              </div>
+              Users Management
+            </h3>
+            <p className="text-sm text-muted-foreground font-medium mt-2">
+              Manage users, roles, and permissions for this business
+            </p>
+          </div>
+          <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white shadow-md">
+                <Plus className="mr-2 h-4 w-4" />
+                Invite User
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Invite New User</DialogTitle>
@@ -305,6 +311,7 @@ export function UsersTab({ businessId }: UsersTabProps) {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {users.length === 0 ? (

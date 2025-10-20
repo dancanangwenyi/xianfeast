@@ -203,20 +203,26 @@ export function StallsTab({ businessId }: StallsTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Stalls Management</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage stalls, vendor spaces, and categories for this business
-          </p>
-        </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Stall
-            </Button>
-          </DialogTrigger>
+      <div className="bg-gradient-to-r from-card via-card to-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                <Store className="h-4 w-4 text-white" />
+              </div>
+              Stalls Management
+            </h3>
+            <p className="text-sm text-muted-foreground font-medium mt-2">
+              Manage stalls, vendor spaces, and categories for this business
+            </p>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white shadow-md">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Stall
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Stall</DialogTitle>
@@ -275,12 +281,19 @@ export function StallsTab({ businessId }: StallsTabProps) {
         </Dialog>
       </div>
 
+      </div>
+
       {stalls.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Store className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="mb-4 text-muted-foreground">No stalls yet</p>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Card className="bg-gradient-to-br from-card via-card to-card/80 backdrop-blur-sm border border-border/50 shadow-xl">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+              <Store className="h-8 w-8 text-white" />
+            </div>
+            <p className="mb-6 text-muted-foreground font-medium text-lg">No stalls yet</p>
+            <Button 
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white shadow-md"
+            >
               Create your first stall
             </Button>
           </CardContent>
@@ -288,43 +301,53 @@ export function StallsTab({ businessId }: StallsTabProps) {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {stalls.map((stall) => (
-            <Card key={stall.id}>
-              <CardHeader>
+            <Card key={stall.id} className="bg-gradient-to-br from-card via-card to-card/80 backdrop-blur-sm border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <CardHeader className="bg-gradient-to-r from-muted/20 to-muted/5 border-b border-border/30">
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Store className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 text-foreground">
+                      <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-md flex items-center justify-center">
+                        <Store className="h-3 w-3 text-white" />
+                      </div>
                       {stall.name}
                     </CardTitle>
-                    <CardDescription className="mt-2">
+                    <CardDescription className="mt-2 font-medium">
                       {stall.description || "No description"}
                     </CardDescription>
                   </div>
-                  <Badge variant={stall.status === "active" ? "default" : "secondary"}>
-                    {stall.status}
+                  <Badge 
+                    variant={stall.status === "active" ? "default" : "secondary"}
+                    className={`${
+                      stall.status === "active" 
+                        ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md" 
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {stall.status.toUpperCase()}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-6">
                 {stall.pickup_address && (
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{stall.pickup_address}</p>
+                  <div className="flex items-start gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200/50 dark:border-blue-800/50 rounded-lg p-3">
+                    <MapPin className="h-4 w-4 mt-0.5 text-blue-600 dark:text-blue-400" />
+                    <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">{stall.pickup_address}</p>
                   </div>
                 )}
                 
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200/50 dark:border-green-800/50 rounded-lg p-3">
+                  <Clock className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <p className="text-sm text-green-700 dark:text-green-300 font-medium">
                     Capacity: {stall.capacity_per_day} orders/day
                   </p>
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 pt-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => startEdit(stall)}
+                    className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/50 dark:hover:to-indigo-900/50"
                   >
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
@@ -333,6 +356,7 @@ export function StallsTab({ businessId }: StallsTabProps) {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteStall(stall.id)}
+                    className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:from-red-100 hover:to-rose-100 dark:hover:from-red-900/50 dark:hover:to-rose-900/50"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete

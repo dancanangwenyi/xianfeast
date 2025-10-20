@@ -92,63 +92,96 @@ export default function BusinessManagePage() {
     }
 
     return (
-        <div className="min-h-screen bg-background p-8">
+        <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-8">
             <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-8">
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-4 mb-6">
                         <Link href="/admin/businesses">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" className="hover:bg-accent/50 transition-colors">
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back to Businesses
                             </Button>
                         </Link>
                     </div>
 
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold flex items-center gap-3">
-                                <Building2 className="h-8 w-8" />
-                                {business.name}
-                            </h1>
-                            <p className="mt-2 text-muted-foreground">
-                                Manage all aspects of this business
-                            </p>
+                    <div className="bg-gradient-to-r from-card via-card to-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h1 className="text-3xl font-bold flex items-center gap-3 bg-gradient-to-r from-primary via-orange-500 to-amber-500 bg-clip-text text-transparent">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-orange-500 rounded-lg flex items-center justify-center shadow-md">
+                                        <Building2 className="h-6 w-6 text-white" />
+                                    </div>
+                                    {business.name}
+                                </h1>
+                                <p className="mt-3 text-muted-foreground font-medium">
+                                    Comprehensive business management dashboard
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge 
+                                    variant={business.status === "active" ? "default" : "secondary"}
+                                    className={`px-3 py-1 font-semibold ${
+                                        business.status === "active" 
+                                            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md" 
+                                            : "bg-muted text-muted-foreground"
+                                    }`}
+                                >
+                                    {business.status.toUpperCase()}
+                                </Badge>
+                            </div>
                         </div>
-                        <Badge variant={business.status === "active" ? "default" : "secondary"}>
-                            {business.status}
-                        </Badge>
                     </div>
                 </div>
 
                 {/* Business Management Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-6">
-                        <TabsTrigger value="info" className="flex items-center gap-2">
-                            <Settings className="h-4 w-4" />
-                            Info
-                        </TabsTrigger>
-                        <TabsTrigger value="stalls" className="flex items-center gap-2">
-                            <Store className="h-4 w-4" />
-                            Stalls
-                        </TabsTrigger>
-                        <TabsTrigger value="products" className="flex items-center gap-2">
-                            <Package className="h-4 w-4" />
-                            Products
-                        </TabsTrigger>
-                        <TabsTrigger value="users" className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            Users
-                        </TabsTrigger>
-                        <TabsTrigger value="orders" className="flex items-center gap-2">
-                            <ShoppingCart className="h-4 w-4" />
-                            Orders
-                        </TabsTrigger>
-                        <TabsTrigger value="analytics" className="flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4" />
-                            Analytics
-                        </TabsTrigger>
-                    </TabsList>
+                    <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-2 shadow-lg">
+                        <TabsList className="grid w-full grid-cols-6 bg-transparent gap-1">
+                            <TabsTrigger 
+                                value="info" 
+                                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-accent/50"
+                            >
+                                <Settings className="h-4 w-4" />
+                                Info
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="stalls" 
+                                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-accent/50"
+                            >
+                                <Store className="h-4 w-4" />
+                                Stalls
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="products" 
+                                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-accent/50"
+                            >
+                                <Package className="h-4 w-4" />
+                                Products
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="users" 
+                                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-accent/50"
+                            >
+                                <Users className="h-4 w-4" />
+                                Users
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="orders" 
+                                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-accent/50"
+                            >
+                                <ShoppingCart className="h-4 w-4" />
+                                Orders
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="analytics" 
+                                className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200 hover:bg-accent/50"
+                            >
+                                <BarChart3 className="h-4 w-4" />
+                                Analytics
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
 
                     <TabsContent value="info">
                         <BusinessInfoTab
