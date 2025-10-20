@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid"
-import { updateRow, SHEET_COLUMNS } from "../google/sheets"
+import { updateRowInSheet } from "../dynamodb/api-service"
 
 /**
  * Generate a magic link token for user invite
@@ -15,16 +15,11 @@ export async function createMagicLinkInvite(userId: string, email: string): Prom
   const token = generateMagicLinkToken()
   const expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
-  await updateRow(
-    "users",
-    userId,
-    {
-      invite_token: token,
-      invite_expiry: expiryDate.toISOString(),
-      status: "invited",
-    },
-    SHEET_COLUMNS.users,
-  )
+  await updateRowInSheet("users", userId, {
+    invite_token: token,
+    invite_expiry: expiryDate.toISOString(),
+    status: "pending",
+  })
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
   return `${appUrl}/auth/magic?token=${token}`

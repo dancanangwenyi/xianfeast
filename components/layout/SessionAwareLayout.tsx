@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from '@/hooks/useSessionManager.tsx'
+import { useSession } from '@/hooks/useSessionManager'
 import { SessionWarningToast } from '@/components/ui/toast'
 import { useEffect } from 'react'
 

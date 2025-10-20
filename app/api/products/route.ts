@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { appendRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { createProduct, getAllProducts } from "@/lib/dynamodb/products"
 import { checkPermission } from "@/lib/auth/permissions"
-import { v4 as uuidv4 } from "uuid"
 import { triggerWebhooks } from "@/lib/webhooks/dispatcher"
 
 /**
@@ -21,35 +20,22 @@ export async function GET(request: NextRequest) {
     const businessId = searchParams.get("businessId")
     const status = searchParams.get("status")
 
-    // Build filter function
-    let filterFn = (row: any) => true
+    // Build filters object
+    const filters: any = {}
+    if (stallId) filters.stall_id = stallId
+    if (businessId) filters.business_id = businessId
+    if (status) filters.status = status
 
-    if (stallId) {
-      const prevFilter = filterFn
-      filterFn = (row: any) => prevFilter(row) && row.stall_id === stallId
-    }
-
-    if (businessId) {
-      const prevFilter = filterFn
-      filterFn = (row: any) => prevFilter(row) && row.business_id === businessId
-    }
-
-    if (status) {
-      const prevFilter = filterFn
-      filterFn = (row: any) => prevFilter(row) && row.status === status
-    }
-
-    const products = await queryRows("products", SHEET_COLUMNS.products, filterFn)
+    const products = await getAllProducts(filters)
 
     // Get images for each product
-    const allImages = await queryRows("product_images", SHEET_COLUMNS.product_images, () => true)
-
-    const productsWithImages = products.map((product) => ({
-      ...product,
-      images: allImages
-        .filter((img) => img.product_id === product.id)
-        .sort((a, b) => Number(a.order_index) - Number(b.order_index)),
-    }))
+    const { getProductImages } = await import("@/lib/dynamodb/products")
+    const productsWithImages = await Promise.all(
+      products.map(async (product) => ({
+        ...product,
+        images: await getProductImages(product.id),
+      }))
+    )
 
     return NextResponse.json({ products: productsWithImages })
   } catch (error) {
@@ -95,31 +81,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions to create products" }, { status: 403 })
     }
 
-    const productId = uuidv4()
-    await appendRow(
-      "products",
-      {
-        id: productId,
-        stall_id: stallId,
-        business_id: businessId,
-        title,
-        short_desc: shortDesc || "",
-        long_desc: longDesc || "",
-        price_cents: priceCents,
-        currency: currency || "KES",
-        sku: sku || "",
-        tags_csv: Array.isArray(tags) ? tags.join(",") : tags || "",
-        diet_flags_csv: Array.isArray(dietFlags) ? dietFlags.join(",") : dietFlags || "",
-        prep_time_minutes: prepTimeMinutes || 0,
-        inventory_qty: inventoryQty || null,
-        status: "draft",
-        created_by: session.userId,
-      },
-      SHEET_COLUMNS.products,
-    )
+    const product = await createProduct({
+      stall_id: stallId,
+      business_id: businessId,
+      title,
+      short_desc: shortDesc || "",
+      long_desc: longDesc || "",
+      price_cents: priceCents,
+      currency: currency || "KES",
+      sku: sku || "",
+      tags_csv: Array.isArray(tags) ? tags.join(",") : tags || "",
+      diet_flags_csv: Array.isArray(dietFlags) ? dietFlags.join(",") : dietFlags || "",
+      prep_time_minutes: prepTimeMinutes || 0,
+      inventory_qty: inventoryQty || 0,
+      status: "draft",
+      created_by: session.userId,
+    })
 
     await triggerWebhooks(businessId, "product.created", {
-      productId,
+      productId: product.id,
       stallId,
       title,
       priceCents,
@@ -128,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      productId,
+      productId: product.id,
       message: "Product created successfully",
     })
   } catch (error) {

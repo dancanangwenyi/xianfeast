@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { getRow, updateRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getOrderWithItems, updateOrder } from "@/lib/dynamodb/orders"
 
 /**
  * GET /api/orders/[id]
@@ -14,21 +14,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params
-    const order = await getRow("orders", id, SHEET_COLUMNS.orders)
+    const order = await getOrderWithItems(id)
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
 
-    // Get order items
-    const items = await queryRows("order_items", SHEET_COLUMNS.order_items, (row) => row.order_id === id)
-
-    return NextResponse.json({
-      order: {
-        ...order,
-        items,
-      },
-    })
+    return NextResponse.json({ order })
   } catch (error) {
     console.error("Error fetching order:", error)
     return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 })
@@ -52,13 +44,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const updateData: any = {}
 
     if (body.status !== undefined) updateData.status = body.status
-    if (body.scheduledFor !== undefined) updateData.scheduled_for = body.scheduledFor
+    if (body.scheduled_for !== undefined) updateData.scheduled_for = body.scheduled_for
     if (body.notes !== undefined) updateData.notes = body.notes
 
-    await updateRow("orders", id, updateData, SHEET_COLUMNS.orders)
+    const updatedOrder = await updateOrder(id, updateData)
+
+    if (!updatedOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
 
     return NextResponse.json({
       success: true,
+      order: updatedOrder,
       message: "Order updated successfully",
     })
   } catch (error) {

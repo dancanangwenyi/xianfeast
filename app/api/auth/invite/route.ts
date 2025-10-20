@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { appendRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { createUser } from "@/lib/dynamodb/users"
 import { createMagicLinkInvite } from "@/lib/auth/magic-link"
 import { sendMagicLinkEmail } from "@/lib/email/send"
 import { v4 as uuidv4 } from "uuid"
@@ -27,30 +27,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user record
-    const userId = uuidv4()
-    await appendRow(
-      "users",
-      {
-        id: userId,
-        email,
-        name,
-        roles_json: JSON.stringify(roles),
-        mfa_enabled: false,
-        status: "invited",
-        invited_by: session.userId,
-      },
-      SHEET_COLUMNS.users,
-    )
+    const user = await createUser({
+      email,
+      name,
+      roles_json: JSON.stringify(roles),
+      mfa_enabled: false,
+      status: "pending",
+      invited_by: session.userId,
+    })
 
     // Generate magic link
-    const magicLink = await createMagicLinkInvite(userId, email)
+    const magicLink = await createMagicLinkInvite(user.id, email)
 
     // Send email
     await sendMagicLinkEmail(email, magicLink)
 
     return NextResponse.json({
       success: true,
-      userId,
+      userId: user.id,
       message: "Invitation sent successfully",
     })
   } catch (error) {

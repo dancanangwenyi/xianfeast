@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySession } from "@/lib/auth/session"
 import { createInvitation } from "@/lib/auth/invitation"
-import { getSheetsClient } from "@/lib/google/auth"
+import { appendRowToSheet } from "@/lib/dynamodb/api-service"
 import { v4 as uuidv4 } from "uuid"
 
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID

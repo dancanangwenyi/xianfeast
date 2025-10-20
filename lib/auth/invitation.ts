@@ -4,12 +4,11 @@
  */
 
 import { config } from "dotenv"
-import { getSheetsClient } from "../google/auth"
+import { appendRowToSheet, queryRowsFromSheet, updateRowInSheet } from "../dynamodb/api-service"
 import { v4 as uuidv4 } from "uuid"
 import crypto from "crypto"
 
 config()
-const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
 
 export interface InvitationData {
   userId: string
@@ -53,21 +52,13 @@ export async function createMagicLinkInvite(
     expiresAt,
   }
 
-  // Store in magic_links sheet
-  const sheets = getSheetsClient()
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "magic_links!A:ZZ",
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[
-        uuidv4(), // id
-        userId,
-        token,
-        expiresAt,
-        "", // used_at (empty initially)
-      ]]
-    }
+  // Store in magic_links table
+  await appendRowToSheet("magic_links", {
+    id: uuidv4(),
+    user_id: userId,
+    token,
+    expires_at: expiresAt,
+    used_at: null,
   })
 
   return magicLinkData
@@ -80,47 +71,34 @@ export async function verifyMagicLinkToken(
   token: string
 ): Promise<{ valid: boolean; userId?: string; email?: string; error?: string }> {
   try {
-    const sheets = getSheetsClient()
-    
     // Get magic link data
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "magic_links!A:ZZ",
-    })
+    const magicLinks = await queryRowsFromSheet("magic_links", { token })
 
-    const magicLinks = response.data.values?.slice(1) || [] // Skip header
-    const magicLink = magicLinks.find(row => row[2] === token) // token is column 2
-
-    if (!magicLink) {
+    if (magicLinks.length === 0) {
       return { valid: false, error: "Invalid token" }
     }
 
-    const [, userId, , expiresAt, usedAt] = magicLink
+    const magicLink = magicLinks[0]
 
     // Check if already used
-    if (usedAt) {
+    if (magicLink.used_at) {
       return { valid: false, error: "Token already used" }
     }
 
     // Check if expired
-    if (new Date(expiresAt) < new Date()) {
+    if (new Date(magicLink.expires_at) < new Date()) {
       return { valid: false, error: "Token expired" }
     }
 
     // Get user email
-    const usersResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "users!A:ZZ",
-    })
+    const users = await queryRowsFromSheet("users", { id: magicLink.user_id })
 
-    const users = usersResponse.data.values?.slice(1) || []
-    const user = users.find(row => row[0] === userId) // id is column 0
-
-    if (!user) {
+    if (users.length === 0) {
       return { valid: false, error: "User not found" }
     }
 
-    return { valid: true, userId, email: user[1] } // email is column 1
+    const user = users[0]
+    return { valid: true, userId: magicLink.user_id, email: user.email }
   } catch (error) {
     return { valid: false, error: "Verification failed" }
   }
@@ -130,30 +108,18 @@ export async function verifyMagicLinkToken(
  * Mark magic link as used
  */
 export async function markMagicLinkAsUsed(token: string): Promise<void> {
-  const sheets = getSheetsClient()
-  
-  // Find the magic link row
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "magic_links!A:ZZ",
-  })
+  // Find the magic link
+  const magicLinks = await queryRowsFromSheet("magic_links", { token })
 
-  const magicLinks = response.data.values?.slice(1) || []
-  const magicLinkIndex = magicLinks.findIndex(row => row[2] === token)
-
-  if (magicLinkIndex === -1) {
+  if (magicLinks.length === 0) {
     throw new Error("Magic link not found")
   }
 
-  // Update the used_at field (column 4, 0-indexed)
-  const rowNumber = magicLinkIndex + 2 // +1 for header, +1 for 1-indexed
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `magic_links!E${rowNumber}`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[new Date().toISOString()]]
-    }
+  const magicLink = magicLinks[0]
+  
+  // Update the used_at field
+  await updateRowInSheet("magic_links", magicLink.id, {
+    used_at: new Date().toISOString()
   })
 }
 

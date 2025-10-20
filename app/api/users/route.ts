@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getAllUsers } from "@/lib/dynamodb/users"
 
 /**
  * GET /api/users
@@ -17,21 +17,10 @@ export async function GET(request: NextRequest) {
     const businessId = searchParams.get("businessId")
     const status = searchParams.get("status")
 
-    // Build filter
-    let filterFn = (row: any) => true
+    const filters: any = {}
+    if (status) filters.status = status
 
-    if (businessId) {
-      // TODO: Filter by business_id when we add that field to users
-      const prevFilter = filterFn
-      filterFn = (row: any) => prevFilter(row)
-    }
-
-    if (status) {
-      const prevFilter = filterFn
-      filterFn = (row: any) => prevFilter(row) && row.status === status
-    }
-
-    const users = await queryRows("users", SHEET_COLUMNS.users, filterFn)
+    const users = await getAllUsers(filters)
 
     // Remove sensitive fields
     const sanitizedUsers = users.map((user) => ({
@@ -39,7 +28,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.name,
       roles: JSON.parse(user.roles_json || "[]"),
-      mfaEnabled: user.mfa_enabled === "true" || user.mfa_enabled === true,
+      mfaEnabled: user.mfa_enabled === true,
       status: user.status,
       lastLogin: user.last_login,
       createdAt: user.created_at,

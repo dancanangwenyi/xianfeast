@@ -1,14 +1,13 @@
 /**
  * Data Validation and Healing System for XianFeast
- * Ensures data integrity across all Google Sheets
+ * Ensures data integrity across all DynamoDB tables
  */
 
 import { config } from "dotenv"
-import { getSheetsClient } from "../google/auth"
+import { getAllRowsFromSheet } from "../dynamodb/api-service"
 import { v4 as uuidv4 } from "uuid"
 
 config()
-const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
 
 export interface ValidationResult {
   sheet: string
@@ -38,12 +37,11 @@ export interface CrossSheetRelationship {
 }
 
 class DataValidator {
-  private sheets: any
   private validationResults: ValidationResult[] = []
   private crossSheetRelationships: CrossSheetRelationship[] = []
 
   constructor() {
-    this.sheets = getSheetsClient()
+    // No initialization needed for DynamoDB
   }
 
   /**

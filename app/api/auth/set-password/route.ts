@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { updateUser } from "@/lib/dynamodb/users"
 import { hashPassword, validatePassword } from "@/lib/auth/password"
 
 /**
@@ -25,17 +25,12 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password)
 
     // Update user record
-    await updateRow(
-      "users",
-      userId,
-      {
-        hashed_password: hashedPassword,
-        status: "active",
-        invite_token: "",
-        invite_expiry: "",
-      },
-      SHEET_COLUMNS.users,
-    )
+    await updateUser(userId, {
+      hashed_password: hashedPassword,
+      status: "active",
+      invite_token: "",
+      invite_expiry: "",
+    })
 
     // TODO: Get user details and create session
     // For now, return success

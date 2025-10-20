@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { updateRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { queryRowsFromSheet, updateRowInSheet } from "@/lib/dynamodb/api-service"
 import { triggerWebhooks } from "@/lib/webhooks/dispatcher"
 
 /**
@@ -18,14 +18,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // TODO: Check permissions - user must have orders:fulfil
 
-    const orders = await queryRows("orders", SHEET_COLUMNS.orders, (row: any) => row.id === id)
+    const orders = await queryRowsFromSheet("orders", { id })
     const order = orders[0]
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
 
-    await updateRow("orders", id, { status: "fulfilled" }, SHEET_COLUMNS.orders)
+    await updateRowInSheet("orders", id, { status: "fulfilled" })
 
     await triggerWebhooks(order.business_id, "order.fulfilled", {
       orderId: id,

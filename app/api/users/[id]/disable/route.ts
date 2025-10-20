@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { updateRowInSheet } from "@/lib/dynamodb/api-service"
 
 /**
  * POST /api/users/[id]/disable

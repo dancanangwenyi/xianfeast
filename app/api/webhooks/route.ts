@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getRows, appendRow } from "@/lib/google/sheets"
+import { getAllRowsFromSheet, appendRowToSheet } from "@/lib/dynamodb/api-service"
 import { verifySession } from "@/lib/auth/session"
 import { hasPermission } from "@/lib/auth/permissions"
 import { generateWebhookSecret } from "@/lib/webhooks/signature"
@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const webhooks = await getRows("Webhooks")
-  const userWebhooks = webhooks.filter((w) => w.businessId === session.businessId)
+  const webhooks = await getAllRowsFromSheet("webhooks")
+  const userWebhooks = webhooks.filter((w) => w.business_id === session.businessId)
 
   return NextResponse.json({ webhooks: userWebhooks })
 }
@@ -42,16 +42,15 @@ export async function POST(request: NextRequest) {
   const webhookId = crypto.randomUUID()
   const secret = generateWebhookSecret()
 
-  await appendRow("Webhooks", [
-    webhookId,
-    session.businessId,
+  await appendRowToSheet("webhooks", {
+    id: webhookId,
+    business_id: session.businessId,
     url,
-    events.join(","),
+    events: events.join(","),
     secret,
-    "active",
-    description || "",
-    new Date().toISOString(),
-  ])
+    status: "active",
+    description: description || "",
+  })
 
   return NextResponse.json({
     webhook: {

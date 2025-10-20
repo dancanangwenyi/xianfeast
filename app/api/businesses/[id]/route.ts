@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { getRow, updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getBusinessById, updateBusiness } from "@/lib/dynamodb/business"
 
 /**
  * GET /api/businesses/[id]
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params
-    const business = await getRow("businesses", id, SHEET_COLUMNS.businesses)
+    const business = await getBusinessById(id)
 
     if (!business) {
       return NextResponse.json({ error: "Business not found" }, { status: 404 })
@@ -47,15 +47,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const updateData: any = {}
     if (body.name !== undefined) updateData.name = body.name
-    if (body.currency !== undefined) updateData.currency = body.currency
-    if (body.timezone !== undefined) updateData.timezone = body.timezone
+    if (body.description !== undefined) updateData.description = body.description
+    if (body.address !== undefined) updateData.address = body.address
+    if (body.phone !== undefined) updateData.phone = body.phone
+    if (body.email !== undefined) updateData.email = body.email
     if (body.status !== undefined) updateData.status = body.status
     if (body.settings !== undefined) updateData.settings_json = JSON.stringify(body.settings)
 
-    await updateRow("businesses", id, updateData, SHEET_COLUMNS.businesses)
+    const updatedBusiness = await updateBusiness(id, updateData)
+
+    if (!updatedBusiness) {
+      return NextResponse.json({ error: "Business not found" }, { status: 404 })
+    }
 
     return NextResponse.json({
       success: true,
+      business: updatedBusiness,
       message: "Business updated successfully",
     })
   } catch (error) {

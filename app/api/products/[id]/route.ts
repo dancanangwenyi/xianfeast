@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { getRow, updateRow, deleteRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getProductById, updateProduct, deleteProduct } from "@/lib/dynamodb/products"
 import { triggerWebhooks } from "@/lib/webhooks/dispatcher"
 
 /**
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const { id } = params
-    const product = await getRow("products", id, SHEET_COLUMNS.products)
+    const product = await getProductById(id)
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     // TODO: Check permissions - user must have product:update for this stall
 
-    const existingProduct = await getRow("products", id, SHEET_COLUMNS.products)
+    const existingProduct = await getProductById(id)
     if (!existingProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
     }
@@ -52,19 +52,22 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const updateData: any = {}
 
     if (body.title !== undefined) updateData.title = body.title
-    if (body.shortDesc !== undefined) updateData.short_desc = body.shortDesc
-    if (body.longDesc !== undefined) updateData.long_desc = body.longDesc
-    if (body.priceCents !== undefined) updateData.price_cents = body.priceCents
+    if (body.short_desc !== undefined) updateData.short_desc = body.short_desc
+    if (body.long_desc !== undefined) updateData.long_desc = body.long_desc
+    if (body.price_cents !== undefined) updateData.price_cents = body.price_cents
     if (body.currency !== undefined) updateData.currency = body.currency
     if (body.sku !== undefined) updateData.sku = body.sku
-    if (body.tags !== undefined) updateData.tags_csv = Array.isArray(body.tags) ? body.tags.join(",") : body.tags
-    if (body.dietFlags !== undefined)
-      updateData.diet_flags_csv = Array.isArray(body.dietFlags) ? body.dietFlags.join(",") : body.dietFlags
-    if (body.prepTimeMinutes !== undefined) updateData.prep_time_minutes = body.prepTimeMinutes
-    if (body.inventoryQty !== undefined) updateData.inventory_qty = body.inventoryQty
+    if (body.tags_csv !== undefined) updateData.tags_csv = body.tags_csv
+    if (body.diet_flags_csv !== undefined) updateData.diet_flags_csv = body.diet_flags_csv
+    if (body.prep_time_minutes !== undefined) updateData.prep_time_minutes = body.prep_time_minutes
+    if (body.inventory_qty !== undefined) updateData.inventory_qty = body.inventory_qty
     if (body.status !== undefined) updateData.status = body.status
 
-    await updateRow("products", id, updateData, SHEET_COLUMNS.products)
+    const updatedProduct = await updateProduct(id, updateData)
+
+    if (!updatedProduct) {
+      return NextResponse.json({ error: "Failed to update product" }, { status: 500 })
+    }
 
     await triggerWebhooks(existingProduct.business_id, "product.updated", {
       productId: id,
@@ -75,6 +78,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     return NextResponse.json({
       success: true,
+      product: updatedProduct,
       message: "Product updated successfully",
     })
   } catch (error) {
@@ -98,7 +102,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     // TODO: Check permissions - user must have product:delete for this stall
 
-    await deleteRow("products", id, SHEET_COLUMNS.products)
+    await deleteProduct(id)
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getRows, updateRow } from "@/lib/google/sheets"
+import { getAllRowsFromSheet, updateRowInSheet } from "@/lib/dynamodb/api-service"
 import { verifySession } from "@/lib/auth/session"
 import { hasPermission } from "@/lib/auth/permissions"
 

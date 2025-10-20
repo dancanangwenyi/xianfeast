@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { appendRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { createStall, getAllStalls } from "@/lib/dynamodb/stalls"
 import { checkPermission } from "@/lib/auth/permissions"
-import { v4 as uuidv4 } from "uuid"
 
 /**
  * GET /api/stalls
@@ -18,12 +17,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const businessId = searchParams.get("businessId")
 
-    let filterFn = (row: any) => true
-    if (businessId) {
-      filterFn = (row: any) => row.business_id === businessId
-    }
+    const filters: any = {}
+    if (businessId) filters.business_id = businessId
 
-    const stalls = await queryRows("stalls", SHEET_COLUMNS.stalls, filterFn)
+    const stalls = await getAllStalls(filters)
 
     return NextResponse.json({ stalls })
   } catch (error) {
@@ -56,25 +53,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions to create stalls" }, { status: 403 })
     }
 
-    const stallId = uuidv4()
-    await appendRow(
-      "stalls",
-      {
-        id: stallId,
-        business_id: businessId,
-        name,
-        description: description || "",
-        pickup_address: pickupAddress || "",
-        open_hours_json: openHours ? JSON.stringify(openHours) : "",
-        capacity_per_day: capacityPerDay || 100,
-        status: "active",
-      },
-      SHEET_COLUMNS.stalls,
-    )
+    const stall = await createStall({
+      business_id: businessId,
+      name,
+      description: description || "",
+      pickup_address: pickupAddress || "",
+      open_hours_json: openHours ? JSON.stringify(openHours) : "",
+      capacity_per_day: capacityPerDay || 100,
+      status: "active",
+    })
 
     return NextResponse.json({
       success: true,
-      stallId,
+      stallId: stall.id,
       message: "Stall created successfully",
     })
   } catch (error) {

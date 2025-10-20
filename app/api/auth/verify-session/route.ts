@@ -1,27 +1,29 @@
-import { NextRequest, NextResponse } from "next/server"
-import { verifySession } from "@/lib/auth/session-server"
+import { type NextRequest, NextResponse } from "next/server"
+import { getSession } from "@/lib/auth/session"
 
 /**
  * GET /api/auth/verify-session
- * Verify current session and return session data
+ * Verify current session and return user data
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await verifySession(request)
+    const session = await getSession()
     
     if (!session) {
-      return NextResponse.json({ error: "No valid session" }, { status: 401 })
+      return NextResponse.json({ error: "No active session" }, { status: 401 })
     }
 
+    // Return session data with expiry information
     return NextResponse.json({
       userId: session.userId,
       email: session.email,
       roles: session.roles,
       businessId: session.businessId,
-      expiresAt: new Date(session.exp * 1000).toISOString(), // Convert exp to ISO string
+      expiresAt: new Date(session.exp * 1000).toISOString(), // Convert Unix timestamp to ISO string
+      isAuthenticated: true,
     })
   } catch (error) {
-    console.error("Session verification failed:", error)
-    return NextResponse.json({ error: "Session verification failed" }, { status: 401 })
+    console.error("Error verifying session:", error)
+    return NextResponse.json({ error: "Session verification failed" }, { status: 500 })
   }
 }

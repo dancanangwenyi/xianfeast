@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getUserWithRoles, updateUserLastLogin } from "@/lib/dynamodb/auth"
+import { getUserWithRoles, updateUserLastLogin } from "@/lib/dynamodb/users"
 import { verifyPassword } from "@/lib/auth/password"
 import { setSessionCookies } from "@/lib/auth/session-server"
 import { storeOTP } from "@/lib/auth/mfa"

@@ -1,30 +1,29 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { refreshSession } from "@/lib/auth/session"
 
 /**
  * POST /api/auth/refresh
- * Refresh session using refresh token
+ * Refresh the current session using refresh token
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await refreshSession(request)
+    const newSession = await refreshSession(request)
     
-    if (!session) {
-      return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 })
+    if (!newSession) {
+      return NextResponse.json({ error: "Unable to refresh session" }, { status: 401 })
     }
 
+    // Return new session data
     return NextResponse.json({
-      success: true,
-      user: {
-        id: session.userId,
-        email: session.email,
-        roles: session.roles,
-        businessId: session.businessId,
-      },
+      userId: newSession.userId,
+      email: newSession.email,
+      roles: newSession.roles,
+      businessId: newSession.businessId,
+      expiresAt: new Date(newSession.exp * 1000).toISOString(),
+      isAuthenticated: true,
     })
   } catch (error) {
     console.error("Error refreshing session:", error)
-    return NextResponse.json({ error: "Failed to refresh session" }, { status: 500 })
+    return NextResponse.json({ error: "Session refresh failed" }, { status: 500 })
   }
 }
-

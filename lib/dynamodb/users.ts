@@ -1,0 +1,272 @@
+import { dynamoClient, TABLE_NAMES } from './client'
+import { 
+  PutCommand, 
+  GetCommand, 
+  UpdateCommand, 
+  QueryCommand, 
+  ScanCommand 
+} from '@aws-sdk/lib-dynamodb'
+import { v4 as uuidv4 } from 'uuid'
+
+export interface User {
+  id: string
+  email: string
+  name: string
+  hashed_password?: string
+  roles_json: string
+  mfa_enabled: boolean
+  last_login?: string
+  status: 'pending' | 'active' | 'suspended' | 'deleted'
+  invited_by?: string
+  invite_token?: string
+  invite_expiry?: string
+  password_change_required?: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Role {
+  id: string
+  business_id: string
+  role_name: string
+  permissions_csv: string
+  created_at: string
+}
+
+export interface UserRole {
+  role_id: string
+  business_id: string
+  user_id: string
+  assigned_at: string
+}
+
+/**
+ * Create a new user
+ */
+export async function createUser(userData: Omit<User, 'id' | 'created_at' | 'updated_at'>): Promise<User> {
+  const user: User = {
+    id: uuidv4(),
+    ...userData,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  const command = new PutCommand({
+    TableName: TABLE_NAMES.USERS,
+    Item: user,
+  })
+
+  await dynamoClient.send(command)
+  return user
+}
+
+/**
+ * Get user by ID
+ */
+export async function getUserById(id: string): Promise<User | null> {
+  const command = new GetCommand({
+    TableName: TABLE_NAMES.USERS,
+    Key: { id },
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Item as User || null
+}
+
+/**
+ * Get user by email
+ */
+export async function getUserByEmail(email: string): Promise<User | null> {
+  // Use scan with filter instead of query to avoid index issues
+  const command = new ScanCommand({
+    TableName: TABLE_NAMES.USERS,
+    FilterExpression: 'email = :email',
+    ExpressionAttributeValues: {
+      ':email': email,
+    },
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Items?.[0] as User || null
+}
+
+/**
+ * Update user
+ */
+export async function updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+  const updateExpressions: string[] = []
+  const expressionAttributeValues: Record<string, any> = {}
+  const expressionAttributeNames: Record<string, string> = {}
+
+  // Build update expression dynamically
+  Object.entries(updates).forEach(([key, value]) => {
+    if (key !== 'id' && value !== undefined) {
+      updateExpressions.push(`#${key} = :${key}`)
+      expressionAttributeNames[`#${key}`] = key
+      expressionAttributeValues[`:${key}`] = value
+    }
+  })
+
+  if (updateExpressions.length === 0) {
+    return null
+  }
+
+  updateExpressions.push('#updated_at = :updated_at')
+  expressionAttributeNames['#updated_at'] = 'updated_at'
+  expressionAttributeValues[':updated_at'] = new Date().toISOString()
+
+  const command = new UpdateCommand({
+    TableName: TABLE_NAMES.USERS,
+    Key: { id },
+    UpdateExpression: `SET ${updateExpressions.join(', ')}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: 'ALL_NEW',
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Attributes as User || null
+}
+
+/**
+ * Get all users
+ */
+export async function getAllUsers(filters?: { status?: string }): Promise<User[]> {
+  const command = new ScanCommand({
+    TableName: TABLE_NAMES.USERS,
+    FilterExpression: filters?.status ? '#status = :status' : undefined,
+    ExpressionAttributeNames: filters?.status ? { '#status': 'status' } : undefined,
+    ExpressionAttributeValues: filters?.status ? { ':status': filters.status } : undefined,
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Items as User[] || []
+}
+
+/**
+ * Create a role
+ */
+export async function createRole(roleData: Omit<Role, 'id' | 'created_at'>): Promise<Role> {
+  const role: Role = {
+    id: uuidv4(),
+    ...roleData,
+    created_at: new Date().toISOString(),
+  }
+
+  const command = new PutCommand({
+    TableName: TABLE_NAMES.ROLES,
+    Item: role,
+  })
+
+  await dynamoClient.send(command)
+  return role
+}
+
+/**
+ * Get role by ID
+ */
+export async function getRoleById(id: string): Promise<Role | null> {
+  const command = new GetCommand({
+    TableName: TABLE_NAMES.ROLES,
+    Key: { id },
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Item as Role || null
+}
+
+/**
+ * Get roles by business ID
+ */
+export async function getRolesByBusinessId(businessId: string): Promise<Role[]> {
+  const command = new ScanCommand({
+    TableName: TABLE_NAMES.ROLES,
+    FilterExpression: 'business_id = :business_id',
+    ExpressionAttributeValues: {
+      ':business_id': businessId,
+    },
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Items as Role[] || []
+}
+
+/**
+ * Get all roles
+ */
+export async function getAllRoles(): Promise<Role[]> {
+  const command = new ScanCommand({
+    TableName: TABLE_NAMES.ROLES,
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Items as Role[] || []
+}
+
+/**
+ * Create user-role relationship
+ */
+export async function createUserRole(userRoleData: UserRole): Promise<void> {
+  const command = new PutCommand({
+    TableName: TABLE_NAMES.USER_ROLES,
+    Item: {
+      ...userRoleData,
+      assigned_at: new Date().toISOString(),
+    },
+  })
+
+  await dynamoClient.send(command)
+}
+
+/**
+ * Get user roles by user ID
+ */
+export async function getUserRoles(userId: string): Promise<Role[]> {
+  // First get user-role relationships
+  const userRolesCommand = new QueryCommand({
+    TableName: TABLE_NAMES.USER_ROLES,
+    IndexName: 'user-id-index',
+    KeyConditionExpression: 'user_id = :user_id',
+    ExpressionAttributeValues: {
+      ':user_id': userId,
+    },
+  })
+
+  const userRolesResult = await dynamoClient.send(userRolesCommand)
+  const userRoles = userRolesResult.Items as UserRole[] || []
+
+  if (userRoles.length === 0) {
+    return []
+  }
+
+  // Get role details for each role ID
+  const roles: Role[] = []
+  for (const userRole of userRoles) {
+    const role = await getRoleById(userRole.role_id)
+    if (role) {
+      roles.push(role)
+    }
+  }
+
+  return roles
+}
+
+/**
+ * Get user with roles
+ */
+export async function getUserWithRoles(email: string): Promise<(User & { roles: Role[] }) | null> {
+  const user = await getUserByEmail(email)
+  if (!user) {
+    return null
+  }
+
+  const roles = await getUserRoles(user.id)
+  return { ...user, roles }
+}
+
+/**
+ * Update user last login
+ */
+export async function updateUserLastLogin(userId: string): Promise<void> {
+  await updateUser(userId, { last_login: new Date().toISOString() })
+}

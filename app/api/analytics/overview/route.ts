@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { queryRowsFromSheet } from "@/lib/dynamodb/api-service"
 
 /**
  * GET /api/analytics/overview
@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
 
     // Fetch all data
     const [businesses, users, orders, products] = await Promise.all([
-      queryRows("businesses", SHEET_COLUMNS.businesses, () => true),
-      queryRows("users", SHEET_COLUMNS.users, () => true),
-      queryRows("orders", SHEET_COLUMNS.orders, () => true),
-      queryRows("products", SHEET_COLUMNS.products, () => true),
+      queryRowsFromSheet("businesses", {}),
+      queryRowsFromSheet("users", {}),
+      queryRowsFromSheet("orders", {}),
+      queryRowsFromSheet("products", {}),
     ])
 
     // Calculate metrics

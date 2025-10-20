@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyOTP } from "@/lib/auth/mfa"
-import { getSheetsClient } from "@/lib/google/auth"
+import { queryRowsFromSheet, updateRowInSheet } from "@/lib/dynamodb/api-service"
 import { setSessionCookies } from "@/lib/auth/session"
 
 /**
