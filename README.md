@@ -8,8 +8,7 @@ A Next.js meal ordering platform where organizations can plan and order meals by
 - **Magic Link Auth**: Secure invite-based onboarding with forced password setup
 - **Email OTP MFA**: Optional two-factor authentication via email
 - **Role-Based Access Control**: Fine-grained permissions per stall and business
-- **Google Sheets Database**: Canonical data store with typed helpers
-- **Google Drive Storage**: Image and file uploads with approval workflow
+- **DynamoDB Database**: Scalable NoSQL database with typed helpers
 - **Webhook System**: Real-time event notifications for integrations
 - **AI-Ready**: Stub endpoints for future AI features (product suggestions, menu optimization)
 
@@ -17,8 +16,7 @@ A Next.js meal ordering platform where organizations can plan and order meals by
 
 - **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4
 - **Backend**: Next.js API Routes (TypeScript)
-- **Database**: Google Sheets (via googleapis)
-- **Storage**: Google Drive
+- **Database**: DynamoDB (via AWS SDK)
 - **Auth**: JWT sessions, Argon2 password hashing
 - **Testing**: Jest with ts-jest
 
@@ -26,10 +24,9 @@ A Next.js meal ordering platform where organizations can plan and order meals by
 
 ### Prerequisites
 
-1. Google Cloud Project with Sheets and Drive APIs enabled
-2. Service Account with JSON key file
-3. Google Spreadsheet created (note the ID from URL)
-4. Google Drive folder created (note the ID from URL)
+1. AWS Account with DynamoDB access
+2. AWS Access Keys configured
+3. Node.js 18+ installed
 
 ### Installation
 
@@ -47,16 +44,23 @@ cp .env.example .env
 \`\`\`
 
 Required environment variables:
-- `GOOGLE_SPREADSHEET_ID` - Your Google Spreadsheet ID
-- `GOOGLE_DRIVE_FOLDER_ID` - Your Google Drive folder ID
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` - Service account email
-- `GOOGLE_PRIVATE_KEY` - Service account private key (with `\n` for newlines)
+- `AWS_ACCESS_KEY_ID` - Your AWS Access Key
+- `AWS_SECRET_ACCESS_KEY` - Your AWS Secret Key
+- `AWS_REGION` - Your AWS Region (e.g., us-east-1)
 - `JWT_SECRET` - Secret for JWT token signing
+- `SUPER_ADMIN_EMAIL` - Super admin email address
+- `SUPER_ADMIN_PASSWORD` - Super admin password
 
-4. Initialize the Google Sheets structure:
+4. Create DynamoDB tables:
 
 \`\`\`bash
-npm run init-sheets
+npm run create-dynamodb-tables
+\`\`\`
+
+5. Setup super admin:
+
+\`\`\`bash
+npm run setup-admin
 \`\`\`
 
 5. Run the development server:
@@ -111,9 +115,9 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 └── README.md
 \`\`\`
 
-## Google Sheets Schema
+## DynamoDB Schema
 
-The app uses the following sheets (tabs):
+The app uses the following DynamoDB tables:
 
 - **users**: All users with email, password hash, roles, and status
 - **user_roles**: User-to-role assignments per business

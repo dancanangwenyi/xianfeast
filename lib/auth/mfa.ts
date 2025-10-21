@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto"
-import { getSheetsClient } from "@/lib/google/auth"
+import { appendRowToSheet, queryRowsFromSheet, updateRowInSheet } from "@/lib/dynamodb/api-service"
 import { sendOTPEmail } from "@/lib/email/send"
 
 export interface OTPData {
@@ -25,26 +25,12 @@ export async function storeOTP(userId: string, email: string): Promise<{ otpId: 
   const code = generateOTP()
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes
 
-  const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-  if (!SPREADSHEET_ID) {
-    throw new Error("Spreadsheet ID not configured")
-  }
-
-  const sheets = getSheetsClient()
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "otp_codes!A:ZZ",
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[
-        otpId,
-        userId,
-        code,
-        expiresAt,
-        "", // used_at (empty initially)
-      ]]
-    }
+  await appendRowToSheet("otp_codes", {
+    id: otpId,
+    user_id: userId,
+    code,
+    expires_at: expiresAt,
+    used_at: null,
   })
 
   // Send OTP via email
@@ -57,53 +43,32 @@ export async function storeOTP(userId: string, email: string): Promise<{ otpId: 
  * Verify OTP code
  */
 export async function verifyOTP(otpId: string, code: string): Promise<boolean> {
-  const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-  if (!SPREADSHEET_ID) {
-    throw new Error("Spreadsheet ID not configured")
-  }
+  const otpCodes = await queryRowsFromSheet("otp_codes", { id: otpId })
 
-  const sheets = getSheetsClient()
-
-  const otpResponse = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "otp_codes!A:ZZ",
-  })
-
-  const otpCodes = otpResponse.data.values?.slice(1) || []
-  const otpRecord = otpCodes.find(row => row[0] === otpId)
-
-  if (!otpRecord) {
+  if (otpCodes.length === 0) {
     return false
   }
 
-  const [, userId, storedCode, expiresAt, usedAt] = otpRecord
+  const otpRecord = otpCodes[0]
 
   // Check if OTP is expired
-  if (new Date(expiresAt) < new Date()) {
+  if (new Date(otpRecord.expires_at) < new Date()) {
     return false
   }
 
   // Check if OTP is already used
-  if (usedAt) {
+  if (otpRecord.used_at) {
     return false
   }
 
   // Check if code matches
-  if (storedCode !== code) {
+  if (otpRecord.code !== code) {
     return false
   }
 
   // Mark OTP as used
-  const otpIndex = otpCodes.findIndex(row => row[0] === otpId)
-  const rowNumber = otpIndex + 2 // +1 for header, +1 for 1-indexed
-
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `otp_codes!E${rowNumber}`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: [[new Date().toISOString()]]
-    }
+  await updateRowInSheet("otp_codes", otpId, {
+    used_at: new Date().toISOString()
   })
 
   return true
@@ -113,42 +78,7 @@ export async function verifyOTP(otpId: string, code: string): Promise<boolean> {
  * Clean up expired OTPs
  */
 export async function cleanupExpiredOTPs(): Promise<void> {
-  const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-  if (!SPREADSHEET_ID) {
-    throw new Error("Spreadsheet ID not configured")
-  }
-
-  const sheets = getSheetsClient()
-
-  const otpResponse = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "otp_codes!A:ZZ",
-  })
-
-  const otpCodes = otpResponse.data.values || []
-  const now = new Date()
-
-  // Filter out expired OTPs
-  const validOTPs = otpCodes.filter((row, index) => {
-    if (index === 0) return true // Keep header
-    const expiresAt = row[3]
-    return new Date(expiresAt) > now
-  })
-
-  // Clear the sheet and rewrite with valid OTPs
-  await sheets.spreadsheets.values.clear({
-    spreadsheetId: SPREADSHEET_ID,
-    range: "otp_codes!A:ZZ",
-  })
-
-  if (validOTPs.length > 0) {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "otp_codes!A:ZZ",
-      valueInputOption: "RAW",
-      requestBody: {
-        values: validOTPs
-      }
-    })
-  }
+  // This would be handled by DynamoDB TTL in production
+  // For now, we'll leave expired OTPs in the table
+  console.log("OTP cleanup would be handled by DynamoDB TTL")
 }

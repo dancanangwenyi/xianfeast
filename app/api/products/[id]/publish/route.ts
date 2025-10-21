@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { getRow, updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getRowFromSheet, updateRowInSheet } from "@/lib/dynamodb/api-service"
 import { triggerWebhooks } from "@/lib/webhooks/dispatcher"
 
 /**
@@ -18,12 +18,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // TODO: Check permissions - user must have product:update for this stall
 
-    const product = await getRow("products", id, SHEET_COLUMNS.products)
+    const product = await getRowFromSheet("products", id)
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
     }
 
-    await updateRow("products", id, { status: "pending" }, SHEET_COLUMNS.products)
+    await updateRowInSheet("products", id, { status: "pending" })
 
     await triggerWebhooks(product.business_id, "product.published", {
       productId: id,

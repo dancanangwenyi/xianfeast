@@ -196,6 +196,16 @@ class GlobalSessionManager {
           isAuthenticated: true,
           isLoading: false,
         }
+        
+        // Update expiry time after successful refresh
+        const expiresAt = data.expiresAt
+        if (expiresAt) {
+          const now = Date.now()
+          const expiryTime = new Date(expiresAt).getTime()
+          this.timeUntilExpiry = Math.max(0, expiryTime - now)
+          this.startExpiryCountdown()
+        }
+        
         this.notifyListeners()
         return true
       } else {

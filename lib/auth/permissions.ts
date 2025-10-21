@@ -1,4 +1,4 @@
-import { queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { queryRowsFromSheet } from "@/lib/dynamodb/api-service"
 import type { Permission, SessionPayload } from "./session"
 
 /**
@@ -10,10 +10,9 @@ export async function checkPermission(session: SessionPayload, permission: Permi
     return true
   }
 
-  // Get role permissions from sheet
-  const rolePermissions = await queryRows("roles_permissions", SHEET_COLUMNS.roles_permissions, (row) =>
-    session.roles.includes(row.role_name),
-  )
+  // Get role permissions from DynamoDB
+  const allRoles = await queryRowsFromSheet("roles", {})
+  const rolePermissions = allRoles.filter(role => session.roles.includes(role.role_name))
 
   // Check if any role has the permission
   for (const role of rolePermissions) {
@@ -30,8 +29,8 @@ export async function checkPermission(session: SessionPayload, permission: Permi
  * Check if a user has a specific permission by userId
  */
 export async function hasPermission(userId: string, permission: Permission): Promise<boolean> {
-  // Get user session data from users sheet
-  const users = await queryRows("users", SHEET_COLUMNS.users, (row) => row.id === userId)
+  // Get user session data from users table
+  const users = await queryRowsFromSheet("users", { id: userId })
 
   if (users.length === 0) {
     return false
@@ -93,9 +92,8 @@ export async function getUserPermissions(session: SessionPayload): Promise<Permi
     ]
   }
 
-  const rolePermissions = await queryRows("roles_permissions", SHEET_COLUMNS.roles_permissions, (row) =>
-    session.roles.includes(row.role_name),
-  )
+  const allRoles = await queryRowsFromSheet("roles", {})
+  const rolePermissions = allRoles.filter(role => session.roles.includes(role.role_name))
 
   const permissions = new Set<Permission>()
   for (const role of rolePermissions) {

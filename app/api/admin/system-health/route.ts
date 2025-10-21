@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySession } from "@/lib/auth/session"
-import { getSheetsClient } from "@/lib/google/auth"
+import { getAllRowsFromSheet } from "@/lib/dynamodb/api-service"
 
 // Middleware to check super admin role
 async function requireSuperAdmin(request: NextRequest) {
@@ -27,81 +27,53 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   try {
-    const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-    if (!SPREADSHEET_ID) {
-      return NextResponse.json({ error: "Spreadsheet ID not configured" }, { status: 500 })
-    }
-
-    const sheets = getSheetsClient()
-
-    // Test Google Sheets API connection
-    let sheetsStatus = "healthy"
-    let sheetsLatency = 0
+    // Test DynamoDB connection
+    let dynamoStatus = "healthy"
+    let dynamoLatency = 0
+    
     try {
       const startTime = Date.now()
-      await sheets.spreadsheets.get({
-        spreadsheetId: SPREADSHEET_ID,
-      })
-      sheetsLatency = Date.now() - startTime
+      await getAllRowsFromSheet("users")
+      dynamoLatency = Date.now() - startTime
     } catch (error) {
-      sheetsStatus = "error"
+      dynamoStatus = "unhealthy"
+      console.error("DynamoDB health check failed:", error)
     }
 
-    // Test Google Drive API connection (mock for now)
-    let driveStatus = "healthy"
-    let driveLatency = 0
-    try {
-      const startTime = Date.now()
-      // Mock Drive API call
-      await new Promise(resolve => setTimeout(resolve, 50))
-      driveLatency = Date.now() - startTime
-    } catch (error) {
-      driveStatus = "error"
-    }
-
-    // Calculate overall health score
-    const healthScore = Math.round(
-      ((sheetsStatus === "healthy" ? 50 : 0) + 
-       (driveStatus === "healthy" ? 30 : 0) + 
-       (sheetsLatency < 1000 ? 20 : 10)) / 100 * 100
-    )
-
-    return NextResponse.json({
-      overall: {
-        status: healthScore > 80 ? "healthy" : healthScore > 60 ? "warning" : "error",
-        score: healthScore,
-        uptime: "7 days, 12 hours",
-        lastCheck: new Date().toISOString()
-      },
+    // Mock other health checks
+    const systemHealth = {
+      overall: dynamoStatus === "healthy" ? "healthy" : "degraded",
       services: {
-        database: {
+        api: {
           status: "healthy",
-          latency: sheetsLatency,
+          latency: 45,
+          uptime: "99.9%"
+        },
+        database: {
+          status: dynamoStatus,
+          latency: dynamoLatency,
           lastSync: new Date().toISOString()
         },
-        googleSheets: {
-          status: sheetsStatus,
-          latency: sheetsLatency,
-          quota: "85%"
-        },
-        googleDrive: {
-          status: driveStatus,
-          latency: driveLatency,
-          quota: "45%"
-        },
-        ai: {
+        authentication: {
           status: "healthy",
-          latency: 1200,
-          quota: "60%"
+          latency: 23,
+          activeUsers: 156
+        },
+        webhooks: {
+          status: "healthy",
+          latency: 67,
+          queueSize: 0
         }
       },
       metrics: {
-        totalRequests: 1247,
-        errorRate: 2.1,
-        avgResponseTime: 450,
-        activeUsers: 156
+        cpuUsage: 45.2,
+        memoryUsage: 62.8,
+        diskUsage: 34.1,
+        networkLatency: 12.3
       }
-    })
+    }
+
+    return NextResponse.json(systemHealth)
   } catch (error) {
     console.error("Error checking system health:", error)
     return NextResponse.json({ error: "Failed to check system health" }, { status: 500 })

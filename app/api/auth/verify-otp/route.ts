@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyOTP } from "@/lib/auth/otp"
-import { queryRows, updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getUserByEmail, updateUser } from "@/lib/dynamodb/users"
 import { setSessionCookie } from "@/lib/auth/session"
 
 /**
@@ -24,13 +24,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const users = await queryRows("users", SHEET_COLUMNS.users, (row) => row.email === email)
+    const user = await getUserByEmail(email)
 
-    if (users.length === 0) {
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const user = users[0]
     const roles = JSON.parse(user.roles_json || "[]")
 
     // Create session
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Update last login
-    await updateRow("users", user.id, { last_login: new Date().toISOString() }, SHEET_COLUMNS.users)
+    await updateUser(user.id, { last_login: new Date().toISOString() })
 
     return NextResponse.json({
       success: true,

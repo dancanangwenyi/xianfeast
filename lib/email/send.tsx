@@ -45,22 +45,69 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
   }
 }
 
+export interface MagicLinkEmailOptions {
+  to: string
+  name: string
+  token: string
+  type: 'business_invitation' | 'password_reset' | 'user_invitation'
+  businessName?: string
+}
+
 /**
  * Send magic link invite email
  */
-export async function sendMagicLinkEmail(email: string, magicLink: string): Promise<void> {
+export async function sendMagicLinkEmail(options: MagicLinkEmailOptions): Promise<void> {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const magicLink = `${baseUrl}/auth/magic?token=${options.token}`
+  
+  let subject = "Your XianFeast Invitation"
+  let content = ""
+  
+  switch (options.type) {
+    case 'business_invitation':
+      subject = `Welcome to XianFeast - ${options.businessName} Invitation`
+      content = `
+        <h1>Welcome to XianFeast!</h1>
+        <p>Hi ${options.name},</p>
+        <p>You've been invited to manage <strong>${options.businessName}</strong> on XianFeast (The Immortal Dining).</p>
+        <p>Click the link below to set up your account and start managing your business:</p>
+        <p><a href="${magicLink}" style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Set Up Account</a></p>
+        <p>Or copy and paste this link: ${magicLink}</p>
+        <p>This link will expire in 7 days.</p>
+        <p>If you didn't request this invitation, please ignore this email.</p>
+      `
+      break
+    case 'password_reset':
+      subject = "Reset Your XianFeast Password"
+      content = `
+        <h1>Password Reset</h1>
+        <p>Hi ${options.name},</p>
+        <p>You requested to reset your password for XianFeast.</p>
+        <p>Click the link below to reset your password:</p>
+        <p><a href="${magicLink}" style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Reset Password</a></p>
+        <p>Or copy and paste this link: ${magicLink}</p>
+        <p>This link will expire in 24 hours.</p>
+        <p>If you didn't request this reset, please ignore this email.</p>
+      `
+      break
+    default:
+      content = `
+        <h1>Welcome to XianFeast!</h1>
+        <p>Hi ${options.name},</p>
+        <p>You've been invited to join XianFeast (The Immortal Dining).</p>
+        <p>Click the link below to set up your account:</p>
+        <p><a href="${magicLink}" style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Set Up Account</a></p>
+        <p>Or copy and paste this link: ${magicLink}</p>
+        <p>This link will expire in 24 hours.</p>
+        <p>If you didn't request this invitation, please ignore this email.</p>
+      `
+  }
+
   await sendEmail({
-    to: email,
-    subject: "Your XianFeast Invitation",
-    html: `
-      <h1>Welcome to XianFeast!</h1>
-      <p>You've been invited to join XianFeast (The Immortal Dining).</p>
-      <p>Click the link below to set up your account:</p>
-      <p><a href="${magicLink}">${magicLink}</a></p>
-      <p>This link will expire in 24 hours.</p>
-      <p>If you didn't request this invitation, please ignore this email.</p>
-    `,
-    text: `Welcome to XianFeast! Click this link to set up your account: ${magicLink} (expires in 24 hours)`,
+    to: options.to,
+    subject,
+    html: content,
+    text: content.replace(/<[^>]*>/g, ''), // Strip HTML for text version
   })
 }
 

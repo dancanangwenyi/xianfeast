@@ -23,7 +23,7 @@ async function requireSuperAdmin(request: NextRequest) {
 
 /**
  * POST /api/admin/validate-data
- * Validate and heal all data across Google Sheets
+ * Validate and heal all data across DynamoDB tables
  */
 export async function POST(request: NextRequest) {
   const authError = await requireSuperAdmin(request)

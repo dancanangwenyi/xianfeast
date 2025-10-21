@@ -1,8 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { queryRows, appendRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getAllRoles, createRole } from "@/lib/dynamodb/users"
 import { checkPermission } from "@/lib/auth/permissions"
-import { v4 as uuidv4 } from "uuid"
 
 /**
  * GET /api/roles
@@ -18,15 +17,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const businessId = searchParams.get("businessId")
 
-    let filterFn = (row: any) => true
+    const roles = await getAllRoles()
+
+    let filteredRoles = roles
     if (businessId) {
-      filterFn = (row: any) => row.business_id === businessId
+      filteredRoles = roles.filter(role => role.business_id === businessId)
     }
 
-    const roles = await queryRows("roles_permissions", SHEET_COLUMNS.roles_permissions, filterFn)
-
-    const rolesWithPermissions = roles.map((role) => ({
-      id: role.role_id,
+    const rolesWithPermissions = filteredRoles.map((role) => ({
+      id: role.id,
       name: role.role_name,
       businessId: role.business_id,
       permissions: role.permissions_csv.split(",").map((p: string) => p.trim()),
@@ -62,21 +61,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "businessId, roleName, and permissions are required" }, { status: 400 })
     }
 
-    const roleId = uuidv4()
-    await appendRow(
-      "roles_permissions",
-      {
-        role_id: roleId,
-        business_id: businessId,
-        role_name: roleName,
-        permissions_csv: Array.isArray(permissions) ? permissions.join(",") : permissions,
-      },
-      SHEET_COLUMNS.roles_permissions,
-    )
+    const role = await createRole({
+      business_id: businessId,
+      role_name: roleName,
+      permissions_csv: Array.isArray(permissions) ? permissions.join(",") : permissions,
+    })
 
     return NextResponse.json({
       success: true,
-      roleId,
+      roleId: role.id,
       message: "Role created successfully",
     })
   } catch (error) {

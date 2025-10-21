@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/lib/theme'
 import { ToastProvider } from '@/components/ui/toast'
-import { SessionProvider } from '@/hooks/useSessionManager.tsx'
+import { SessionProvider } from '@/hooks/useSessionManager'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });

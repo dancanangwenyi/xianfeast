@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { updateRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { updateProduct } from "@/lib/dynamodb/products"
 
 /**
  * POST /api/products/[id]/approve
@@ -17,7 +17,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // TODO: Check permissions - user must have product:approve for this stall
 
-    await updateRow("products", id, { status: "active" }, SHEET_COLUMNS.products)
+    const updatedProduct = await updateProduct(id, { status: "active" })
+    
+    if (!updatedProduct) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 })
+    }
 
     // TODO: Emit webhook event: product.approved
 

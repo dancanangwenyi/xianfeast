@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { getRow, SHEET_COLUMNS } from "@/lib/google/sheets"
+import { getUserById } from "@/lib/dynamodb/users"
 
 /**
  * GET /api/users/me
@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    // Get full user details from sheet
-    const user = await getRow("users", session.userId, SHEET_COLUMNS.users)
+    // Get full user details from DynamoDB
+    const user = await getUserById(session.userId)
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.name,
       roles: JSON.parse(user.roles_json || "[]"),
-      mfaEnabled: user.mfa_enabled === "true" || user.mfa_enabled === true,
+      mfaEnabled: user.mfa_enabled === true,
       status: user.status,
     })
   } catch (error) {

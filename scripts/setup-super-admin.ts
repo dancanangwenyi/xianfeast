@@ -1,53 +1,40 @@
 #!/usr/bin/env tsx
 
 /**
- * Setup Super Admin User
+ * Setup Super Admin User using DynamoDB
  */
 
 import { config } from "dotenv"
-import { getSheetsClient } from "../lib/google/auth"
+import { createUser, createRole, createUserRole, getUserByEmail, getAllRoles } from "../lib/dynamodb/users"
 import { hashPassword } from "../lib/auth/password"
-import { v4 as uuidv4 } from "uuid"
 
 config()
 
 async function setupSuperAdmin() {
   console.log("🔧 Setting up Super Admin User")
-  console.log("=" .repeat(50))
+  console.log("=".repeat(50))
+
+  const email = process.env.SUPER_ADMIN_EMAIL
+  const name = process.env.SUPER_ADMIN_NAME || "Super Admin"
+  const password = process.env.SUPER_ADMIN_PASSWORD || "admin123"
+
+  if (!email) {
+    console.error("❌ SUPER_ADMIN_EMAIL environment variable is required")
+    process.exit(1)
+  }
 
   try {
-    const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-    if (!SPREADSHEET_ID) {
-      throw new Error("GOOGLE_SPREADSHEET_ID not set")
-    }
-
-    const sheets = getSheetsClient()
-
     // Check if super admin already exists
-    const usersResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "users!A:ZZ",
-    })
-
-    const users = usersResponse.data.values?.slice(1) || []
-    const existingSuperAdmin = users.find(user => {
-      const roles = user[4] ? JSON.parse(user[4]) : []
-      return roles.includes("super_admin")
-    })
-
-    if (existingSuperAdmin) {
+    const existingUser = await getUserByEmail(email)
+    if (existingUser) {
       console.log("✅ Super Admin already exists:")
-      console.log(`   Email: ${existingSuperAdmin[1]}`)
-      console.log(`   Name: ${existingSuperAdmin[2]}`)
-      console.log(`   Status: ${existingSuperAdmin[7]}`)
+      console.log(`   Email: ${existingUser.email}`)
+      console.log(`   Name: ${existingUser.name}`)
+      console.log(`   Status: ${existingUser.status}`)
       return
     }
 
-    // Create super admin user
-    const superAdminId = uuidv4()
-    const email = "dancangwe@gmail.com"
-    const name = "Super Admin"
-    const password = "admin123" // Change this in production
+    // Hash the password
     const hashedPassword = await hashPassword(password)
 
     console.log("👤 Creating Super Admin user...")
@@ -55,26 +42,38 @@ async function setupSuperAdmin() {
     console.log(`   Name: ${name}`)
     console.log(`   Password: ${password}`)
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "users!A:ZZ",
-      valueInputOption: "RAW",
-      requestBody: {
-        values: [[
-          superAdminId,
-          email,
-          name,
-          hashedPassword,
-          JSON.stringify(["super_admin"]),
-          false, // mfa_enabled
-          new Date().toISOString(), // last_login
-          "active", // status
-          "", // invited_by
-          "", // invite_token
-          "", // invite_expiry
-          new Date().toISOString(), // created_at
-        ]]
-      }
+    // Create super admin user
+    const user = await createUser({
+      email,
+      name,
+      hashed_password: hashedPassword,
+      roles_json: JSON.stringify(["super_admin"]),
+      mfa_enabled: false,
+      status: "active",
+    })
+
+    // Check if super admin role exists, create if not
+    console.log("🔧 Checking super admin role...")
+    const allRoles = await getAllRoles()
+    let superAdminRole = allRoles.find(role => role.role_name === "super_admin")
+
+    if (!superAdminRole) {
+      console.log("🔧 Creating super admin role...")
+      superAdminRole = await createRole({
+        business_id: "global",
+        role_name: "super_admin",
+        permissions_csv: "admin.all,users.manage,businesses.manage,system.manage",
+      })
+    } else {
+      console.log("✅ Super admin role already exists")
+    }
+
+    // Assign super admin role to user
+    console.log("🔗 Assigning super admin role...")
+    await createUserRole({
+      user_id: user.id,
+      role_id: superAdminRole.id,
+      business_id: "global",
     })
 
     console.log("✅ Super Admin created successfully!")

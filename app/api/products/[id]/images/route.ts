@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { queryRows, deleteRow, SHEET_COLUMNS } from "@/lib/google/sheets"
-import { deleteFile } from "@/lib/google/drive"
+import { queryRowsFromSheet, deleteRowFromSheet } from "@/lib/dynamodb/api-service"
 
 /**
  * GET /api/products/[id]/images
@@ -15,10 +14,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params
-    const images = await queryRows("product_images", SHEET_COLUMNS.product_images, (row) => row.product_id === id)
+    const images = await queryRowsFromSheet("product_images", { product_id: id })
 
     // Sort by order_index
-    images.sort((a, b) => Number(a.order_index) - Number(b.order_index))
+    images.sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0))
 
     return NextResponse.json({ images })
   } catch (error) {
@@ -40,20 +39,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     const { imageId } = await params
 
-    // Get image to find drive_file_id
-    const images = await queryRows("product_images", SHEET_COLUMNS.product_images, (row) => row.id === imageId)
+    // Get image
+    const images = await queryRowsFromSheet("product_images", { id: imageId })
 
     if (images.length === 0) {
       return NextResponse.json({ error: "Image not found" }, { status: 404 })
     }
 
-    const image = images[0]
-
-    // Delete from Drive
-    await deleteFile(image.drive_file_id)
-
-    // Delete from sheet
-    await deleteRow("product_images", imageId, SHEET_COLUMNS.product_images)
+    // Delete from DynamoDB (no Google Drive deletion needed)
+    await deleteRowFromSheet("product_images", imageId)
 
     return NextResponse.json({
       success: true,

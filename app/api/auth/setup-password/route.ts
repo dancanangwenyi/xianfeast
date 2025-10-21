@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyMagicLinkToken, markMagicLinkAsUsed } from "@/lib/auth/invitation"
 import { hashPassword } from "@/lib/auth/password"
-import { getSheetsClient } from "@/lib/google/auth"
+import { updateRowInSheet, queryRowsFromSheet } from "@/lib/dynamodb/api-service"
 import { v4 as uuidv4 } from "uuid"
 
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID

@@ -65,9 +65,8 @@ export function createSessionToken(payload: Omit<SessionPayload, 'iat' | 'exp'>)
     exp: now + SESSION_DURATION,
   }
   
-  return jwt.sign(sessionPayload, JWT_SECRET, {
-    expiresIn: SESSION_DURATION,
-  })
+  // Don't use expiresIn option since we're setting exp manually
+  return jwt.sign(sessionPayload, JWT_SECRET)
 }
 
 /**
@@ -81,9 +80,8 @@ export function createRefreshToken(payload: Omit<RefreshPayload, 'iat' | 'exp'>)
     exp: now + REFRESH_DURATION,
   }
   
-  return jwt.sign(refreshPayload, REFRESH_SECRET, {
-    expiresIn: REFRESH_DURATION,
-  })
+  // Don't use expiresIn option since we're setting exp manually
+  return jwt.sign(refreshPayload, REFRESH_SECRET)
 }
 
 /**
@@ -202,14 +200,13 @@ export async function refreshSession(request: NextRequest): Promise<SessionPaylo
   }
 
   // Get user data from database
-  const { queryRows, SHEET_COLUMNS } = await import("@/lib/google/sheets")
-  const users = await queryRows("users", SHEET_COLUMNS.users, (row) => row.id === refreshPayload.userId)
+  const { getUserById } = await import("@/lib/dynamodb/users")
+  const user = await getUserById(refreshPayload.userId)
   
-  if (users.length === 0) {
+  if (!user) {
     return null
   }
 
-  const user = users[0]
   const roles = JSON.parse(user.roles_json || "[]")
 
   // Create new session
@@ -217,7 +214,7 @@ export async function refreshSession(request: NextRequest): Promise<SessionPaylo
     userId: user.id,
     email: user.email,
     roles,
-    businessId: user.business_id,
+    businessId: undefined, // DynamoDB users don't have direct business_id
     sessionId: refreshPayload.sessionId,
   }
 

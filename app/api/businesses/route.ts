@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { appendRow, queryRows, SHEET_COLUMNS } from "@/lib/google/sheets"
-import { v4 as uuidv4 } from "uuid"
+import { createBusiness, getAllBusinesses } from "@/lib/dynamodb/business"
 
 /**
  * GET /api/businesses
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
-    const businesses = await queryRows("businesses", SHEET_COLUMNS.businesses, () => true)
+    const businesses = await getAllBusinesses()
 
     return NextResponse.json({ businesses })
   } catch (error) {
@@ -43,30 +42,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, ownerUserId, currency = "KES", timezone = "Africa/Nairobi", settings } = body
+    const { name, ownerUserId, currency = "KES", timezone = "Africa/Nairobi", settings, description = "", address = "", phone = "", email = "" } = body
 
     if (!name || !ownerUserId) {
       return NextResponse.json({ error: "name and ownerUserId are required" }, { status: 400 })
     }
 
-    const businessId = uuidv4()
-    await appendRow(
-      "businesses",
-      {
-        id: businessId,
-        name,
-        owner_user_id: ownerUserId,
-        currency,
-        timezone,
-        status: "active",
-        settings_json: settings ? JSON.stringify(settings) : "",
-      },
-      SHEET_COLUMNS.businesses,
-    )
+    const business = await createBusiness({
+      name,
+      description,
+      address,
+      phone,
+      email,
+      owner_user_id: ownerUserId,
+      status: "active",
+      settings_json: settings ? JSON.stringify(settings) : "",
+    })
 
     return NextResponse.json({
       success: true,
-      businessId,
+      businessId: business.id,
       message: "Business created successfully",
     })
   } catch (error) {

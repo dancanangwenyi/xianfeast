@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifySession } from "@/lib/auth/session"
-import { getSheetsClient } from "@/lib/google/auth"
+import { getAllRowsFromSheet } from "@/lib/dynamodb/api-service"
 
 // Middleware to check super admin role
 async function requireSuperAdmin(request: NextRequest) {
@@ -27,40 +27,19 @@ export async function GET(request: NextRequest) {
   if (authError) return authError
 
   try {
-    const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
-    if (!SPREADSHEET_ID) {
-      return NextResponse.json({ error: "Spreadsheet ID not configured" }, { status: 500 })
-    }
-
-    const sheets = getSheetsClient()
-
-    // Get counts from different sheets
-    const [businessesResponse, usersResponse, ordersResponse] = await Promise.all([
-      sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: "businesses!A:A",
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: "users!A:A",
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: "orders!A:A",
-      }),
+    // Get data from DynamoDB
+    const [businesses, users, orders] = await Promise.all([
+      getAllRowsFromSheet("businesses"),
+      getAllRowsFromSheet("users"),
+      getAllRowsFromSheet("orders"),
     ])
 
-    const totalBusinesses = (businessesResponse.data.values?.length || 1) - 1 // Subtract header
-    const totalUsers = (usersResponse.data.values?.length || 1) - 1
-    const totalOrders = (ordersResponse.data.values?.length || 1) - 1
+    const totalBusinesses = businesses.length
+    const totalUsers = users.length
+    const totalOrders = orders.length
 
-    // Calculate active businesses (status = "active")
-    const businessesData = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: "businesses!A:D", // id, name, owner_user_id, status
-    })
-
-    const activeBusinesses = businessesData.data.values?.slice(1).filter(row => row[3] === "active").length || 0
+    // Calculate active businesses
+    const activeBusinesses = businesses.filter(b => b.status === "active").length
 
     // Calculate pending approvals (mock for now)
     const pendingApprovals = 8
