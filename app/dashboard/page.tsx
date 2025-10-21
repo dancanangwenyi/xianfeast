@@ -13,6 +13,11 @@ export default async function DashboardPage() {
     redirect("/admin/dashboard")
   }
 
+  // Redirect business owners and stall managers to business dashboard
+  if (session.roles.includes("business_owner") || session.roles.includes("stall_manager")) {
+    redirect("/business/dashboard")
+  }
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl">

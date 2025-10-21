@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getUserWithRoles, updateUserLastLogin } from "@/lib/dynamodb/users"
+import { getUserWithRoles, updateUserLastLogin, getUserRolesWithBusiness } from "@/lib/dynamodb/users"
 import { verifyPassword } from "@/lib/auth/password"
 import { setSessionCookies } from "@/lib/auth/session-server"
 import { storeOTP } from "@/lib/auth/mfa"
@@ -18,11 +18,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email using DynamoDB
+    console.log('🔍 Looking up user:', email)
     const userWithRoles = await getUserWithRoles(email)
 
     if (!userWithRoles) {
+      console.log('❌ User not found:', email)
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
+
+    console.log('✅ User found:', userWithRoles.email, 'Status:', userWithRoles.status)
 
     // Check if user is active
     if (userWithRoles.status !== "active") {
@@ -31,11 +35,16 @@ export async function POST(request: NextRequest) {
 
     // Verify password
     if (!userWithRoles.hashed_password) {
+      console.log('❌ No password hash found for user:', email)
       return NextResponse.json({ error: "Password not set. Please use magic link." }, { status: 401 })
     }
 
+    console.log('🔐 Verifying password for user:', email)
     const isValidPassword = await verifyPassword(password, userWithRoles.hashed_password)
+    console.log('🔐 Password verification result:', isValidPassword)
+    
     if (!isValidPassword) {
+      console.log('❌ Invalid password for user:', email)
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
@@ -53,7 +62,20 @@ export async function POST(request: NextRequest) {
     }
 
     // No MFA - create session directly
-    const roles = JSON.parse(userWithRoles.roles_json || "[]")
+    const roleNames = userWithRoles.roles.map(role => role.name)
+    
+    // Get business ID for business owners/stall managers
+    let businessId = ''
+    if (roleNames.includes('business_owner') || roleNames.includes('stall_manager')) {
+      // Get user roles with business associations
+      const userRolesWithBusiness = await getUserRolesWithBusiness(userWithRoles.id)
+      const businessRole = userRolesWithBusiness.find(ur => 
+        ur.role.name === 'business_owner' || ur.role.name === 'stall_manager'
+      )
+      if (businessRole) {
+        businessId = businessRole.business_id
+      }
+    }
     
     const response = NextResponse.json({
       success: true,
@@ -61,7 +83,7 @@ export async function POST(request: NextRequest) {
         id: userWithRoles.id,
         email: userWithRoles.email,
         name: userWithRoles.name,
-        roles,
+        roles: roleNames,
         password_change_required: userWithRoles.password_change_required,
       },
     })
@@ -70,8 +92,8 @@ export async function POST(request: NextRequest) {
     await setSessionCookies({
       userId: userWithRoles.id,
       email: userWithRoles.email,
-      roles,
-      businessId: '', // DynamoDB users don't have business_id directly
+      roles: roleNames,
+      businessId,
     }, response)
 
     // Update last login

@@ -1,75 +1,98 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { getSession } from "@/lib/auth/session"
-import { createStall, getAllStalls } from "@/lib/dynamodb/stalls"
-import { checkPermission } from "@/lib/auth/permissions"
+import { NextRequest, NextResponse } from 'next/server'
+import { getSession } from '@/lib/auth/session'
+import { getUserById } from '@/lib/dynamodb/users'
+import { createStall, getStallsByBusinessId } from '@/lib/dynamodb/businesses'
 
-/**
- * GET /api/stalls
- * List stalls with optional filters
- */
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
     if (!session) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const searchParams = request.nextUrl.searchParams
-    const businessId = searchParams.get("businessId")
+    const { searchParams } = new URL(request.url)
+    const businessId = searchParams.get('businessId')
 
-    const filters: any = {}
-    if (businessId) filters.business_id = businessId
+    if (!businessId) {
+      return NextResponse.json({ error: 'Business ID is required' }, { status: 400 })
+    }
 
-    const stalls = await getAllStalls(filters)
+    // For super admin, allow access to any business
+    // For business owners, verify they own the business
+    if (!session.roles.includes('super_admin')) {
+      const user = await getUserById(session.userId)
+      if (!user || user.business_id !== businessId) {
+        return NextResponse.json({ error: 'Access denied to this business' }, { status: 403 })
+      }
+    }
 
-    return NextResponse.json({ stalls })
+    const stalls = await getStallsByBusinessId(businessId)
+
+    return NextResponse.json({
+      stalls: stalls.map(stall => ({
+        id: stall.id,
+        business_id: stall.business_id,
+        name: stall.name,
+        description: stall.description,
+        pickup_address: stall.pickup_address,
+        open_hours_json: stall.open_hours_json,
+        capacity_per_day: stall.capacity_per_day,
+        status: stall.status,
+        created_at: stall.created_at,
+        updated_at: stall.updated_at
+      }))
+    })
+
   } catch (error) {
-    console.error("Error fetching stalls:", error)
-    return NextResponse.json({ error: "Failed to fetch stalls" }, { status: 500 })
+    console.error('Error fetching stalls:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch stalls' },
+      { status: 500 }
+    )
   }
 }
 
-/**
- * POST /api/stalls
- * Create a new stall
- */
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession()
     if (!session) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
+    // Get user's business ID
+    const user = await getUserById(session.userId)
+    if (!user || !user.business_id) {
+      return NextResponse.json({ error: 'No business associated with user' }, { status: 404 })
+    }
+
+    const businessId = user.business_id
     const body = await request.json()
-    const { businessId, name, description, pickupAddress, openHours, capacityPerDay } = body
+    const { name, description, pickupAddress, capacityPerDay } = body
 
-    if (!businessId || !name) {
-      return NextResponse.json({ error: "businessId and name are required" }, { status: 400 })
+    if (!name) {
+      return NextResponse.json({ error: 'Stall name is required' }, { status: 400 })
     }
 
-    // Check permissions - user must have stall:create for this business
-    const hasPermission = await checkPermission(session, "stall:create")
-    if (!hasPermission) {
-      return NextResponse.json({ error: "Insufficient permissions to create stalls" }, { status: 403 })
-    }
-
-    const stall = await createStall({
+    // Create new stall
+    const newStall = await createStall({
       business_id: businessId,
       name,
-      description: description || "",
-      pickup_address: pickupAddress || "",
-      open_hours_json: openHours ? JSON.stringify(openHours) : "",
+      description: description || '',
+      pickup_address: pickupAddress || '',
       capacity_per_day: capacityPerDay || 100,
-      status: "active",
+      status: 'active'
     })
 
     return NextResponse.json({
       success: true,
-      stallId: stall.id,
-      message: "Stall created successfully",
+      stall: newStall
     })
+
   } catch (error) {
-    console.error("Error creating stall:", error)
-    return NextResponse.json({ error: "Failed to create stall" }, { status: 500 })
+    console.error('Error creating stall:', error)
+    return NextResponse.json(
+      { error: 'Failed to create stall' },
+      { status: 500 }
+    )
   }
 }

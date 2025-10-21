@@ -13,6 +13,7 @@ export interface User {
   email: string
   name: string
   hashed_password?: string
+  business_id?: string
   roles_json: string
   mfa_enabled: boolean
   last_login?: string
@@ -249,6 +250,39 @@ export async function getUserRoles(userId: string): Promise<Role[]> {
   }
 
   return roles
+}
+
+/**
+ * Get user roles with business associations
+ */
+export async function getUserRolesWithBusiness(userId: string): Promise<(UserRole & { role: Role })[]> {
+  // First get user-role relationships
+  const userRolesCommand = new QueryCommand({
+    TableName: TABLE_NAMES.USER_ROLES,
+    IndexName: 'user-id-index',
+    KeyConditionExpression: 'user_id = :user_id',
+    ExpressionAttributeValues: {
+      ':user_id': userId,
+    },
+  })
+
+  const userRolesResult = await dynamoClient.send(userRolesCommand)
+  const userRoles = userRolesResult.Items as UserRole[] || []
+
+  if (userRoles.length === 0) {
+    return []
+  }
+
+  // Get role details for each user role
+  const rolesWithBusiness: (UserRole & { role: Role })[] = []
+  for (const userRole of userRoles) {
+    const role = await getRoleById(userRole.role_id)
+    if (role) {
+      rolesWithBusiness.push({ ...userRole, role })
+    }
+  }
+
+  return rolesWithBusiness
 }
 
 /**
