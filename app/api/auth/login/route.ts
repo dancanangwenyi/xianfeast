@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
     // No MFA - create session directly
     const roleNames = userWithRoles.roles.map(role => role.name)
     
+    console.log('🔍 User roles found:', roleNames)
+    
     // Get business ID for business owners/stall managers
     let businessId = ''
     if (roleNames.includes('business_owner') || roleNames.includes('stall_manager')) {
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
         businessId = businessRole.business_id
       }
     }
+    
+    console.log('🔍 Setting session with roles:', roleNames, 'businessId:', businessId)
     
     const response = NextResponse.json({
       success: true,
