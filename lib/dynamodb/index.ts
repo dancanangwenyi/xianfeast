@@ -10,6 +10,9 @@ export * from './orders'
 export * from './webhooks'
 export * from './analytics'
 export * from './magic-links'
+export * from './customers'
+export * from './carts'
+export * from './customer-magic-links'
 
 // Re-export commonly used types
 export type {
@@ -48,3 +51,17 @@ export type {
   MagicLink as MagicLinkType,
   OTPCode,
 } from './magic-links'
+
+export type {
+  Cart,
+  CartItem,
+} from './carts'
+
+export type {
+  CustomerMagicLink,
+} from './customer-magic-links'
+
+export type {
+  CustomerPreferences,
+  CustomerStats,
+} from './users'

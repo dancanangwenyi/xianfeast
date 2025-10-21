@@ -22,6 +22,22 @@ export interface Order {
   notes?: string
 }
 
+export interface CustomerOrder extends Order {
+  delivery_option?: 'pickup' | 'delivery'
+  delivery_address?: string
+  delivery_instructions?: string
+  estimated_ready_time?: string
+  actual_ready_time?: string
+  customer_rating?: number
+  customer_review?: string
+  notification_sent: boolean
+  payment_method: 'cash' | 'card'
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
+  subtotal_cents: number
+  delivery_fee_cents: number
+  tax_cents: number
+}
+
 export interface OrderItem {
   id: string
   order_id: string
@@ -234,4 +250,95 @@ export async function getOrderWithItems(orderId: string): Promise<(Order & { ite
 
   const items = await getOrderItems(orderId)
   return { ...order, items }
+}
+
+/**
+ * Create a new customer order with extended fields
+ */
+export async function createCustomerOrder(orderData: Omit<CustomerOrder, 'id' | 'created_at' | 'updated_at'>): Promise<CustomerOrder> {
+  const order: CustomerOrder = {
+    id: uuidv4(),
+    ...orderData,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  const command = new PutCommand({
+    TableName: TABLE_NAMES.ORDERS,
+    Item: order,
+  })
+
+  await dynamoClient.send(command)
+  return order
+}
+
+/**
+ * Get customer order by ID (with extended fields)
+ */
+export async function getCustomerOrderById(id: string): Promise<CustomerOrder | null> {
+  const command = new GetCommand({
+    TableName: TABLE_NAMES.ORDERS,
+    Key: { id },
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Item as CustomerOrder || null
+}
+
+/**
+ * Update customer order with extended fields and status history tracking
+ */
+export async function updateCustomerOrder(id: string, updates: Partial<CustomerOrder>): Promise<CustomerOrder | null> {
+  // Get current order to track status changes
+  const currentOrder = await getCustomerOrderById(id)
+  if (!currentOrder) {
+    return null
+  }
+
+  const updateExpressions: string[] = []
+  const expressionAttributeValues: Record<string, any> = {}
+  const expressionAttributeNames: Record<string, string> = {}
+
+  // Track status history if status is being updated
+  if (updates.status && updates.status !== currentOrder.status) {
+    const statusHistory = (currentOrder as any).status_history || []
+    statusHistory.push({
+      status: updates.status,
+      timestamp: new Date().toISOString(),
+      notes: (updates as any).status_notes || undefined
+    })
+    
+    updateExpressions.push('#status_history = :status_history')
+    expressionAttributeNames['#status_history'] = 'status_history'
+    expressionAttributeValues[':status_history'] = statusHistory
+  }
+
+  // Build update expression dynamically
+  Object.entries(updates).forEach(([key, value]) => {
+    if (key !== 'id' && key !== 'status_notes' && value !== undefined) {
+      updateExpressions.push(`#${key} = :${key}`)
+      expressionAttributeNames[`#${key}`] = key
+      expressionAttributeValues[`:${key}`] = value
+    }
+  })
+
+  if (updateExpressions.length === 0) {
+    return null
+  }
+
+  updateExpressions.push('#updated_at = :updated_at')
+  expressionAttributeNames['#updated_at'] = 'updated_at'
+  expressionAttributeValues[':updated_at'] = new Date().toISOString()
+
+  const command = new UpdateCommand({
+    TableName: TABLE_NAMES.ORDERS,
+    Key: { id },
+    UpdateExpression: `SET ${updateExpressions.join(', ')}`,
+    ExpressionAttributeNames: expressionAttributeNames,
+    ExpressionAttributeValues: expressionAttributeValues,
+    ReturnValues: 'ALL_NEW',
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Attributes as CustomerOrder || null
 }

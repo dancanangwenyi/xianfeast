@@ -16,6 +16,7 @@ export interface Stall {
   pickup_address: string
   open_hours_json: string
   capacity_per_day: number
+  cuisine_type?: string
   status: 'pending' | 'active' | 'suspended' | 'deleted'
   created_at: string
   updated_at: string

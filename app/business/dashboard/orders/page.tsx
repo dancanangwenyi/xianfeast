@@ -29,10 +29,14 @@ interface Order {
   customer_email: string
   stall_name: string
   total_amount: number
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled'
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled' | 'fulfilled'
   created_at: string
   delivery_date: string
   items_count: number
+  order_type?: 'customer' | 'internal'
+  delivery_option?: 'pickup' | 'delivery'
+  payment_method?: 'cash' | 'card'
+  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded'
 }
 
 export default function BusinessOrdersPage() {
@@ -40,18 +44,26 @@ export default function BusinessOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [orderTypeFilter, setOrderTypeFilter] = useState<string>('all')
+  const [orderStats, setOrderStats] = useState<any>({})
   const { toast } = useToast()
 
   useEffect(() => {
     fetchOrders()
-  }, [])
+  }, [orderTypeFilter])
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/businesses/my-orders')
+      const params = new URLSearchParams({
+        include_customer_orders: 'true',
+        type: orderTypeFilter
+      })
+      
+      const response = await fetch(`/api/businesses/my-orders?${params}`)
       if (response.ok) {
         const data = await response.json()
         setOrders(data.orders || [])
+        setOrderStats(data.stats || {})
       } else {
         console.error('Failed to fetch orders')
       }
@@ -137,7 +149,7 @@ export default function BusinessOrdersPage() {
               Orders Management
             </h1>
             <p className="text-muted-foreground mt-2 font-medium">
-              Track and manage customer orders ({orders.length} total)
+              Track and manage all orders ({orderStats.total || orders.length} total: {orderStats.customer_orders || 0} customer, {orderStats.internal_orders || 0} internal)
             </p>
           </div>
         </div>
@@ -156,6 +168,16 @@ export default function BusinessOrdersPage() {
                 className="max-w-sm"
               />
             </div>
+            <Select value={orderTypeFilter} onValueChange={setOrderTypeFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Order Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Orders</SelectItem>
+                <SelectItem value="customer">Customer Orders</SelectItem>
+                <SelectItem value="internal">Internal Orders</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-40">
                 <Filter className="w-4 h-4 mr-2" />
@@ -168,6 +190,7 @@ export default function BusinessOrdersPage() {
                 <SelectItem value="preparing">Preparing</SelectItem>
                 <SelectItem value="ready">Ready</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="fulfilled">Fulfilled</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
@@ -205,6 +228,7 @@ export default function BusinessOrdersPage() {
                   <TableHead>Order ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Stall</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Order Date</TableHead>
@@ -226,6 +250,22 @@ export default function BusinessOrdersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{order.stall_name}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={order.order_type === 'customer' ? 'default' : 'secondary'}
+                        className={order.order_type === 'customer' 
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white' 
+                          : 'bg-muted text-muted-foreground'
+                        }
+                      >
+                        {order.order_type === 'customer' ? 'Customer' : 'Internal'}
+                      </Badge>
+                      {order.delivery_option && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {order.delivery_option === 'delivery' ? '🚚 Delivery' : '📦 Pickup'}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="font-medium">
                       ${order.total_amount.toFixed(2)}

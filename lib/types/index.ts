@@ -36,6 +36,27 @@ export interface User {
   invite_token?: string
   invite_expiry?: string
   created_at: string
+  // Customer-specific fields
+  customer_preferences?: CustomerPreferences
+  customer_stats?: CustomerStats
+}
+
+export interface CustomerPreferences {
+  dietary_restrictions: string[]
+  favorite_stalls: string[]
+  default_delivery_address?: string
+  notification_preferences: {
+    email: boolean
+    sms: boolean
+    push: boolean
+  }
+}
+
+export interface CustomerStats {
+  total_orders: number
+  total_spent_cents: number
+  favorite_products: string[]
+  last_order_date?: string
 }
 
 export interface Product {
@@ -111,6 +132,35 @@ export interface Webhook {
   url: string
   secret: string
   active: boolean
+}
+
+export interface Cart {
+  id: string
+  customer_id: string
+  items: CartItem[]
+  created_at: string
+  updated_at: string
+  expires_at: string
+}
+
+export interface CartItem {
+  product_id: string
+  stall_id: string
+  quantity: number
+  unit_price_cents: number
+  scheduled_for?: string
+  special_instructions?: string
+}
+
+export interface CustomerMagicLink {
+  id: string
+  email: string
+  token: string
+  type: 'signup' | 'password_reset'
+  expires_at: string
+  used: boolean
+  created_at: string
+  user_id?: string
 }
 
 // Permission types

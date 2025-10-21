@@ -1,0 +1,230 @@
+{
+  "dashboards": [
+    {
+      "id": "customer-metrics",
+      "title": "Customer Metrics Dashboard",
+      "description": "Monitor customer signup, engagement, and ordering patterns",
+      "widgets": [
+        {
+          "id": "customer-signups",
+          "type": "line-chart",
+          "title": "Customer Signups",
+          "dataSource": "/api/analytics/customer-signups",
+          "timeRange": "7d",
+          "refreshInterval": 300,
+          "config": {
+            "xAxis": "date",
+            "yAxis": "count",
+            "color": "#3B82F6"
+          }
+        },
+        {
+          "id": "active-customers",
+          "type": "metric",
+          "title": "Active Customers (24h)",
+          "dataSource": "/api/analytics/active-customers",
+          "refreshInterval": 60,
+          "config": {
+            "format": "number",
+            "color": "#10B981"
+          }
+        },
+        {
+          "id": "customer-retention",
+          "type": "gauge",
+          "title": "Customer Retention Rate",
+          "dataSource": "/api/analytics/customer-retention",
+          "refreshInterval": 3600,
+          "config": {
+            "min": 0,
+            "max": 100,
+            "unit": "%",
+            "thresholds": [
+              { "value": 70, "color": "#EF4444" },
+              { "value": 85, "color": "#F59E0B" },
+              { "value": 95, "color": "#10B981" }
+            ]
+          }
+        },
+        {
+          "id": "top-stalls",
+          "type": "bar-chart",
+          "title": "Most Popular Stalls",
+          "dataSource": "/api/analytics/popular-stalls",
+          "timeRange": "7d",
+          "refreshInterval": 900,
+          "config": {
+            "xAxis": "stall_name",
+            "yAxis": "order_count",
+            "color": "#8B5CF6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "order-processing",
+      "title": "Order Processing Dashboard",
+      "description": "Monitor order flow, processing times, and completion rates",
+      "widgets": [
+        {
+          "id": "order-volume",
+          "type": "area-chart",
+          "title": "Order Volume",
+          "dataSource": "/api/analytics/order-volume",
+          "timeRange": "24h",
+          "refreshInterval": 60,
+          "config": {
+            "xAxis": "timestamp",
+            "yAxis": "count",
+            "color": "#06B6D4"
+          }
+        },
+        {
+          "id": "order-status-distribution",
+          "type": "pie-chart",
+          "title": "Order Status Distribution",
+          "dataSource": "/api/analytics/order-status",
+          "refreshInterval": 300,
+          "config": {
+            "colors": {
+              "pending": "#F59E0B",
+              "confirmed": "#3B82F6",
+              "in_preparation": "#8B5CF6",
+              "ready": "#10B981",
+              "completed": "#6B7280",
+              "canceled": "#EF4444"
+            }
+          }
+        },
+        {
+          "id": "avg-processing-time",
+          "type": "metric",
+          "title": "Avg Processing Time",
+          "dataSource": "/api/analytics/processing-time",
+          "refreshInterval": 300,
+          "config": {
+            "format": "duration",
+            "unit": "minutes",
+            "color": "#F59E0B"
+          }
+        },
+        {
+          "id": "order-completion-rate",
+          "type": "gauge",
+          "title": "Order Completion Rate",
+          "dataSource": "/api/analytics/completion-rate",
+          "refreshInterval": 300,
+          "config": {
+            "min": 0,
+            "max": 100,
+            "unit": "%",
+            "thresholds": [
+              { "value": 80, "color": "#EF4444" },
+              { "value": 90, "color": "#F59E0B" },
+              { "value": 95, "color": "#10B981" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "system-health",
+      "title": "System Health Dashboard",
+      "description": "Monitor application performance, errors, and infrastructure health",
+      "widgets": [
+        {
+          "id": "api-response-time",
+          "type": "line-chart",
+          "title": "API Response Time",
+          "dataSource": "/api/monitoring/response-times",
+          "timeRange": "1h",
+          "refreshInterval": 30,
+          "config": {
+            "xAxis": "timestamp",
+            "yAxis": "response_time_ms",
+            "color": "#EF4444",
+            "threshold": 5000
+          }
+        },
+        {
+          "id": "error-rate",
+          "type": "metric",
+          "title": "Error Rate (5min)",
+          "dataSource": "/api/monitoring/error-rate",
+          "refreshInterval": 30,
+          "config": {
+            "format": "percentage",
+            "color": "#EF4444",
+            "threshold": 5
+          }
+        },
+        {
+          "id": "system-uptime",
+          "type": "gauge",
+          "title": "System Uptime",
+          "dataSource": "/api/monitoring/uptime",
+          "refreshInterval": 60,
+          "config": {
+            "min": 0,
+            "max": 100,
+            "unit": "%",
+            "thresholds": [
+              { "value": 95, "color": "#EF4444" },
+              { "value": 99, "color": "#F59E0B" },
+              { "value": 99.9, "color": "#10B981" }
+            ]
+          }
+        },
+        {
+          "id": "database-performance",
+          "type": "multi-line-chart",
+          "title": "Database Performance",
+          "dataSource": "/api/monitoring/database-metrics",
+          "timeRange": "1h",
+          "refreshInterval": 60,
+          "config": {
+            "metrics": [
+              { "key": "query_time", "label": "Query Time (ms)", "color": "#3B82F6" },
+              { "key": "connection_count", "label": "Connections", "color": "#10B981" },
+              { "key": "error_count", "label": "Errors", "color": "#EF4444" }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "id": "high-error-rate",
+      "name": "High Error Rate",
+      "condition": "error_rate > 5",
+      "severity": "critical",
+      "channels": ["email", "slack"],
+      "cooldown": 300
+    },
+    {
+      "id": "slow-response-time",
+      "name": "Slow API Response Time",
+      "condition": "avg_response_time > 5000",
+      "severity": "warning",
+      "channels": ["email"],
+      "cooldown": 600
+    },
+    {
+      "id": "low-order-completion",
+      "name": "Low Order Completion Rate",
+      "condition": "completion_rate < 85",
+      "severity": "warning",
+      "channels": ["email", "slack"],
+      "cooldown": 1800
+    },
+    {
+      "id": "database-connection-issues",
+      "name": "Database Connection Issues",
+      "condition": "db_connection_errors > 10",
+      "severity": "critical",
+      "channels": ["email", "slack", "pager"],
+      "cooldown": 180
+    }
+  ]
+}
