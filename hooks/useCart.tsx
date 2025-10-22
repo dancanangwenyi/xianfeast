@@ -85,6 +85,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/customer/cart')
       if (response.ok) {
         const data = await response.json()
+        
+        // Handle warning from server (e.g., database not available)
+        if (data.warning) {
+          console.warn("Cart service warning:", data.warning)
+          // Don't set error for warnings, just log them
+        }
+        
         if (data.cart?.items) {
           // Convert server cart items to local format
           const serverItems: CartItem[] = data.cart.items.map((item: any) => ({
@@ -100,13 +107,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
           
           setItems(serverItems)
           setValidation(data.validation)
+        } else {
+          // Handle empty cart from server
+          setItems([])
+          setValidation(data.validation)
         }
+      } else if (response.status === 503) {
+        // Service unavailable - database issues
+        const errorData = await response.json()
+        console.warn("Cart service temporarily unavailable:", errorData.warning)
+        // Keep local cart but don't show error to user
       } else if (response.status !== 401) {
         // Don't show error for unauthenticated users
         console.error("Failed to sync cart with server")
       }
     } catch (error) {
       console.error("Cart sync error:", error)
+      // Don't set user-facing error for sync issues, keep local cart working
     } finally {
       setLoading(false)
     }
@@ -153,6 +170,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         const errorData = await response.json()
+        if (response.status === 503 && errorData.warning) {
+          // Service unavailable - show user-friendly message
+          setError('Cart service is temporarily unavailable. Your items are saved locally.')
+          return // Don't sync with server, keep local changes
+        }
         throw new Error(errorData.error || 'Failed to add item to cart')
       }
 

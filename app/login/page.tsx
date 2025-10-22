@@ -39,7 +39,15 @@ export default function LoginPage() {
       if (data.requiresMFA) {
         setOtpId(data.otpId)
       } else {
-        router.push("/dashboard")
+        // Check user roles and redirect accordingly
+        const userRoles = data.user?.roles || []
+        if (userRoles.includes("super_admin")) {
+          router.push("/admin/dashboard")
+        } else if (userRoles.includes("customer")) {
+          router.push("/customer/dashboard")
+        } else {
+          router.push("/dashboard")
+        }
       }
     } catch (err) {
       setError("An error occurred during login")
@@ -67,7 +75,21 @@ export default function LoginPage() {
         return
       }
 
-      router.push("/dashboard")
+      // Check user roles and redirect accordingly
+      const response2 = await fetch("/api/auth/verify-session")
+      if (response2.ok) {
+        const sessionData = await response2.json()
+        const userRoles = sessionData.roles || []
+        if (userRoles.includes("super_admin")) {
+          router.push("/admin/dashboard")
+        } else if (userRoles.includes("customer")) {
+          router.push("/customer/dashboard")
+        } else {
+          router.push("/dashboard")
+        }
+      } else {
+        router.push("/dashboard")
+      }
     } catch (err) {
       setError("An error occurred during OTP verification")
     } finally {
@@ -154,9 +176,15 @@ export default function LoginPage() {
                   )}
                 </Button>
                 
-                <div className="text-center pt-4">
+                <div className="text-center pt-4 space-y-2">
                   <p className="text-sm text-gray-500">
                     Welcome back! Ready to create culinary magic? ✨
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Are you a customer?{" "}
+                    <a href="/customer/login" className="text-indigo-600 hover:text-indigo-700 font-semibold">
+                      Sign in here
+                    </a>
                   </p>
                 </div>
               </form>

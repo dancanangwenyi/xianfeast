@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
-import { performanceMonitor } from '@/lib/monitoring/performance-monitor'
-import { getDynamoDBClient } from '@/lib/dynamodb/client'
+import { PerformanceMonitor } from '@/lib/monitoring/performance-monitor'
+import { dynamoClient } from '@/lib/dynamodb/client'
 
 // Dashboard data aggregation for monitoring
 export async function GET(request: NextRequest) {
@@ -53,10 +53,10 @@ async function getCustomerMetrics(timeRange: string) {
 
   try {
     // Customer signup metrics
-    const signupMetrics = await performanceMonitor.getMetric('customer_signups', startTime, now)
+    const signupMetrics = await PerformanceMonitor.getMetric('customer_signups', startTime, now)
     
     // Active customers (customers who placed orders in timeRange)
-    const activeCustomers = await performanceMonitor.getMetric('active_customers', startTime, now)
+    const activeCustomers = await PerformanceMonitor.getMetric('active_customers', startTime, now)
     
     // Customer retention rate
     const retentionRate = await calculateRetentionRate(startTime, now)
@@ -97,7 +97,7 @@ async function getOrderProcessingMetrics(timeRange: string) {
 
   try {
     // Order volume over time
-    const orderVolume = await performanceMonitor.getMetric('order_volume', startTime, now)
+    const orderVolume = await PerformanceMonitor.getMetric('order_volume', startTime, now)
     
     // Order status distribution
     const statusDistribution = await getOrderStatusDistribution(startTime, now)
@@ -141,16 +141,16 @@ async function getSystemHealthMetrics(timeRange: string) {
 
   try {
     // API response times
-    const responseTimeMetrics = await performanceMonitor.getResponseTimeMetrics(startTime, now)
+    const responseTimeMetrics = await PerformanceMonitor.getResponseTimeMetrics(startTime, now)
     
     // Error rate
-    const errorRate = await performanceMonitor.getErrorRate(startTime, now)
+    const errorRate = await PerformanceMonitor.getErrorRate(startTime, now)
     
     // System uptime
-    const uptime = await performanceMonitor.getUptime(startTime, now)
+    const uptime = await PerformanceMonitor.getUptime(startTime, now)
     
     // Database performance
-    const dbMetrics = await performanceMonitor.getDatabaseMetrics(startTime, now)
+    const dbMetrics = await PerformanceMonitor.getDatabaseMetrics(startTime, now)
 
     return {
       responseTime: {
@@ -232,8 +232,8 @@ async function calculateRetentionRate(startTime: Date, endTime: Date): Promise<n
   // Implementation would calculate customer retention based on repeat orders
   // This is a simplified version
   try {
-    const totalCustomers = await performanceMonitor.getMetric('total_customers', startTime, endTime)
-    const returningCustomers = await performanceMonitor.getMetric('returning_customers', startTime, endTime)
+    const totalCustomers = await PerformanceMonitor.getMetric('total_customers', startTime, endTime)
+    const returningCustomers = await PerformanceMonitor.getMetric('returning_customers', startTime, endTime)
     
     if (totalCustomers.count === 0) return 0
     return Math.round((returningCustomers.count / totalCustomers.count) * 100)
@@ -245,7 +245,7 @@ async function calculateRetentionRate(startTime: Date, endTime: Date): Promise<n
 
 async function getPopularStalls(startTime: Date, endTime: Date) {
   try {
-    return await performanceMonitor.getMetric('popular_stalls', startTime, endTime)
+    return await PerformanceMonitor.getMetric('popular_stalls', startTime, endTime)
   } catch (error) {
     console.error('Error fetching popular stalls:', error)
     return []
@@ -254,7 +254,7 @@ async function getPopularStalls(startTime: Date, endTime: Date) {
 
 async function getOrderStatusDistribution(startTime: Date, endTime: Date) {
   try {
-    return await performanceMonitor.getMetric('order_status_distribution', startTime, endTime)
+    return await PerformanceMonitor.getMetric('order_status_distribution', startTime, endTime)
   } catch (error) {
     console.error('Error fetching order status distribution:', error)
     return {}
@@ -263,7 +263,7 @@ async function getOrderStatusDistribution(startTime: Date, endTime: Date) {
 
 async function calculateAverageProcessingTime(startTime: Date, endTime: Date): Promise<number> {
   try {
-    const processingTimes = await performanceMonitor.getMetric('processing_times', startTime, endTime)
+    const processingTimes = await PerformanceMonitor.getMetric('processing_times', startTime, endTime)
     return processingTimes.average || 0
   } catch (error) {
     console.error('Error calculating processing time:', error)
@@ -273,7 +273,7 @@ async function calculateAverageProcessingTime(startTime: Date, endTime: Date): P
 
 async function calculateOrderCompletionRate(startTime: Date, endTime: Date): Promise<number> {
   try {
-    const completionData = await performanceMonitor.getMetric('completion_rate', startTime, endTime)
+    const completionData = await PerformanceMonitor.getMetric('completion_rate', startTime, endTime)
     return completionData.rate || 0
   } catch (error) {
     console.error('Error calculating completion rate:', error)
@@ -283,7 +283,7 @@ async function calculateOrderCompletionRate(startTime: Date, endTime: Date): Pro
 
 async function getActiveAlerts() {
   try {
-    return await performanceMonitor.getActiveAlerts()
+    return await PerformanceMonitor.getActiveAlerts()
   } catch (error) {
     console.error('Error fetching active alerts:', error)
     return []

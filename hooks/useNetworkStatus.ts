@@ -23,7 +23,7 @@ export interface NetworkActions {
 }
 
 export function useNetworkStatus(): [NetworkStatus, NetworkActions] {
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
   const [cacheSize, setCacheSize] = useState(0)
   const [lastSyncAttempt, setLastSyncAttempt] = useState<Date | null>(null)

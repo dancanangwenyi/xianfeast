@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Image from "next/image"
 import { 
@@ -61,7 +61,7 @@ interface StallDetail {
 
 
 
-export default function StallDetailPage() {
+function StallDetailContent() {
   const router = useRouter()
   const params = useParams()
   const stallId = params.id as string
@@ -138,71 +138,64 @@ export default function StallDetailPage() {
 
   if (loading) {
     return (
-      <CustomerLayout>
-        <div className="p-6 space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="p-6">
-                    <div className="flex gap-4">
-                      <Skeleton className="h-24 w-24 rounded" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-6 w-48" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <div>
-              <Card>
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}>
                 <CardContent className="p-6">
-                  <Skeleton className="h-6 w-32 mb-4" />
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-24" />
+                  <div className="flex gap-4">
+                    <Skeleton className="h-24 w-24 rounded" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-6 w-48" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
-            </div>
+            ))}
+          </div>
+          <div>
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-6 w-32 mb-4" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </CustomerLayout>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <CustomerLayout>
-        <div className="p-6 text-center">
-          <div className="text-red-600 mb-4">{error}</div>
-          <div className="space-x-4">
-            <Button onClick={() => router.back()}>Go Back</Button>
-            <Button onClick={loadStallDetail} variant="outline">Try Again</Button>
-          </div>
+      <div className="p-6 text-center">
+        <div className="text-red-600 mb-4">{error}</div>
+        <div className="space-x-4">
+          <Button onClick={() => router.back()}>Go Back</Button>
+          <Button onClick={loadStallDetail} variant="outline">Try Again</Button>
         </div>
-      </CustomerLayout>
+      </div>
     )
   }
 
   if (!stall) {
     return (
-      <CustomerLayout>
-        <div className="p-6 text-center">
-          <div className="text-gray-600">Stall not found</div>
-          <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
-        </div>
-      </CustomerLayout>
+      <div className="p-6 text-center">
+        <div className="text-gray-600">Stall not found</div>
+        <Button onClick={() => router.back()} className="mt-4">Go Back</Button>
+      </div>
     )
   }
 
   const openHours = parseOpenHours(stall.open_hours_json)
 
   return (
-    <CustomerLayout>
-      <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
@@ -486,6 +479,37 @@ export default function StallDetailPage() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+export default function StallDetailPage() {
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <CustomerLayout>
+        <div className="p-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 rounded w-48"></div>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CustomerLayout>
+    )
+  }
+
+  return (
+    <CustomerLayout>
+      <StallDetailContent />
     </CustomerLayout>
   )
 }

@@ -347,3 +347,87 @@
     display: none !important;
   }
 }
+/* Customer Layout Enhancements */
+.customer-layout-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+@media (max-width: 1023px) {
+  .customer-layout-container {
+    display: block;
+  }
+}
+
+/* Ensure sidebar doesn't interfere with main content */
+.customer-sidebar {
+  flex-shrink: 0;
+  width: 16rem; /* 64 * 0.25rem = 16rem */
+}
+
+.customer-main-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Smooth transitions for sidebar */
+.customer-sidebar-transition {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure proper z-index stacking */
+.customer-sidebar-mobile {
+  z-index: 50;
+}
+
+.customer-header {
+  z-index: 20;
+}
+
+.customer-overlay {
+  z-index: 40;
+}
+
+/* Prevent horizontal scroll on mobile */
+@media (max-width: 1023px) {
+  .customer-layout-container {
+    overflow-x: hidden;
+  }
+}
+
+/* Ensure content doesn't get cut off */
+.customer-content-area {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+/* Dark mode enhancements */
+@media (prefers-color-scheme: dark) {
+  .customer-sidebar {
+    backdrop-filter: blur(8px);
+  }
+  
+  .customer-header {
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .customer-sidebar {
+    border-right: 2px solid;
+  }
+  
+  .customer-header {
+    border-bottom: 2px solid;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .customer-sidebar-transition {
+    transition: none;
+  }
+}

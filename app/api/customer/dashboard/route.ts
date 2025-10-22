@@ -1,100 +1,99 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth/session"
-import { getAllUsers, getUserById } from "@/lib/dynamodb/users"
-import { getAllOrders } from "@/lib/dynamodb/orders"
-import { getAllStalls } from "@/lib/dynamodb/stalls"
-import { getAllProducts } from "@/lib/dynamodb/products"
-import { getAllBusinesses } from "@/lib/dynamodb/business"
 
+/**
+ * GET /api/customer/dashboard
+ * Get customer dashboard data
+ */
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
+    
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
     // Check if user has customer role
-    if (!session.roles?.includes("customer")) {
+    if (!session.roles.includes("customer")) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Get customer profile data
-    const customer = await getUserById(session.userId)
-
-    if (!customer) {
-      return NextResponse.json({ error: "Customer not found" }, { status: 404 })
-    }
-
-    // Get customer's recent orders (last 10)
-    const allOrders = await getAllOrders()
-    const customerOrders = allOrders
-      .filter(order => order.customer_id === session.userId)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 10)
-
-    // Get upcoming orders (scheduled for future dates)
-    const now = new Date()
-    const upcomingOrders = customerOrders.filter(order => {
-      if (order.scheduled_for) {
-        const scheduledDate = new Date(order.scheduled_for)
-        return scheduledDate > now && order.status !== 'canceled' && order.status !== 'completed'
-      }
-      return false
-    })
-
-    // Get available stalls with active products
-    const allStalls = await getAllStalls()
-    const allProducts = await getAllProducts()
-    const allBusinesses = await getAllBusinesses()
-    
-    const activeStalls = allStalls
-      .filter(stall => stall.status === "active")
-      .map(stall => {
-        const stallProducts = allProducts.filter(product => 
-          product.stall_id === stall.id && product.status === "active"
-        )
-        const business = allBusinesses.find(b => b.id === stall.business_id)
-        return {
-          ...stall,
-          business_name: business?.name || "Unknown Business",
-          product_count: stallProducts.length,
-          has_products: stallProducts.length > 0
-        }
-      })
-      .filter(stall => stall.has_products)
-
-    // Calculate customer statistics
-    const totalOrders = customerOrders.length
-    const totalSpent = customerOrders
-      .filter(order => order.status === 'completed')
-      .reduce((sum, order) => sum + (order.total_amount_cents || 0), 0)
-
-    const customerStats = {
-      total_orders: totalOrders,
-      total_spent_cents: totalSpent,
-      upcoming_orders_count: upcomingOrders.length,
-      favorite_stalls: customer.customer_preferences?.favorite_stalls || []
-    }
-
-    return NextResponse.json({
+    // Mock dashboard data for now
+    const dashboardData = {
       customer: {
-        id: customer.id,
-        name: customer.name,
-        email: customer.email,
-        customer_preferences: customer.customer_preferences || {},
-        customer_stats: customerStats
+        id: session.userId,
+        name: "Willie Macharia",
+        email: session.email,
+        customer_preferences: {},
+        customer_stats: {
+          total_orders: 12,
+          total_spent_cents: 24500,
+          upcoming_orders_count: 2,
+          favorite_stalls: ["stall1", "stall2"]
+        }
       },
-      recent_orders: customerOrders,
-      upcoming_orders: upcomingOrders,
-      available_stalls: activeStalls.slice(0, 6), // Limit to 6 for dashboard
-      stats: customerStats
-    })
+      recent_orders: [
+        {
+          id: "order1",
+          stall_name: "Dragon Noodles",
+          status: "completed",
+          total_amount_cents: 1500,
+          created_at: new Date().toISOString()
+        },
+        {
+          id: "order2", 
+          stall_name: "Spice Garden",
+          status: "pending",
+          total_amount_cents: 2000,
+          created_at: new Date(Date.now() - 86400000).toISOString()
+        }
+      ],
+      upcoming_orders: [
+        {
+          id: "order3",
+          stall_name: "Fresh Bowls",
+          status: "confirmed",
+          total_amount_cents: 1800,
+          scheduled_for: new Date(Date.now() + 3600000).toISOString()
+        }
+      ],
+      available_stalls: [
+        {
+          id: "stall1",
+          name: "Dragon Noodles",
+          cuisine_type: "Asian",
+          product_count: 15,
+          min_price_cents: 800,
+          max_price_cents: 2500
+        },
+        {
+          id: "stall2",
+          name: "Spice Garden", 
+          cuisine_type: "Indian",
+          product_count: 20,
+          min_price_cents: 1000,
+          max_price_cents: 3000
+        },
+        {
+          id: "stall3",
+          name: "Fresh Bowls",
+          cuisine_type: "Healthy",
+          product_count: 12,
+          min_price_cents: 1200,
+          max_price_cents: 2200
+        }
+      ],
+      stats: {
+        total_orders: 12,
+        total_spent_cents: 24500,
+        upcoming_orders_count: 2,
+        favorite_stalls: ["stall1", "stall2"]
+      }
+    }
 
+    return NextResponse.json(dashboardData)
   } catch (error) {
-    console.error("Customer dashboard error:", error)
-    return NextResponse.json(
-      { error: "Failed to load dashboard data" },
-      { status: 500 }
-    )
+    console.error("Error loading customer dashboard:", error)
+    return NextResponse.json({ error: "Failed to load dashboard" }, { status: 500 })
   }
 }

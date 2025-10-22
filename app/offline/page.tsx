@@ -6,6 +6,9 @@
 'use client'
 
 import React from 'react'
+
+// Disable static generation for this page
+export const dynamic = 'force-dynamic'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -26,11 +29,15 @@ export default function OfflinePage() {
   const [networkStatus, networkActions] = useNetworkStatus()
 
   const handleRetry = () => {
-    window.location.reload()
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
   }
 
   const handleGoHome = () => {
-    window.location.href = '/'
+    if (typeof window !== 'undefined') {
+      window.location.href = '/'
+    }
   }
 
   return (

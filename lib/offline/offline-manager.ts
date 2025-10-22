@@ -28,7 +28,7 @@ export interface OfflineConfig {
 
 export class OfflineManager {
   private static instance: OfflineManager
-  private isOnline: boolean = navigator.onLine
+  private isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true
   private cache: Map<string, CacheEntry> = new Map()
   private syncQueue: SyncQueueItem[] = []
   private syncInProgress: boolean = false
@@ -58,9 +58,11 @@ export class OfflineManager {
    * Initialize offline support
    */
   private initializeOfflineSupport(): void {
-    // Listen for online/offline events
-    window.addEventListener('online', this.handleOnline.bind(this))
-    window.addEventListener('offline', this.handleOffline.bind(this))
+    // Listen for online/offline events (only in browser)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.handleOnline.bind(this))
+      window.addEventListener('offline', this.handleOffline.bind(this))
+    }
 
     // Load cached data and sync queue from localStorage
     this.loadFromStorage()
@@ -306,7 +308,7 @@ export class OfflineManager {
    * Register service worker for background sync
    */
   private async registerServiceWorker(): void {
-    if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
       try {
         const registration = await navigator.serviceWorker.register('/sw.js')
         console.log('📱 Service worker registered for background sync')
@@ -325,6 +327,8 @@ export class OfflineManager {
    * Save cache and sync queue to localStorage
    */
   private saveToStorage(): void {
+    if (typeof localStorage === 'undefined') return
+    
     try {
       localStorage.setItem('offline_cache', JSON.stringify(Array.from(this.cache.entries())))
       localStorage.setItem('sync_queue', JSON.stringify(this.syncQueue))
@@ -337,6 +341,8 @@ export class OfflineManager {
    * Load cache and sync queue from localStorage
    */
   private loadFromStorage(): void {
+    if (typeof localStorage === 'undefined') return
+    
     try {
       const cacheData = localStorage.getItem('offline_cache')
       if (cacheData) {

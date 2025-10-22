@@ -74,7 +74,7 @@ function CustomerLayoutInner({ children }: CustomerLayoutProps) {
       <HighContrast>
         <SkipLink href="#main-content">Skip to main content</SkipLink>
         <SkipLink href="#navigation">Skip to navigation</SkipLink>
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors duration-300 lg:flex">
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div 
@@ -84,10 +84,11 @@ function CustomerLayoutInner({ children }: CustomerLayoutProps) {
         )}
 
         {/* Sidebar */}
-        <div className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-r border-white/20 dark:border-gray-700/50 shadow-lg transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}>
+        <aside className={`
+          w-64 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-r border-white/20 dark:border-gray-700/50 shadow-lg transition-all duration-300 ease-in-out flex-shrink-0
+          lg:relative lg:translate-x-0
+          ${sidebarOpen ? 'fixed inset-y-0 left-0 z-50 translate-x-0' : 'fixed inset-y-0 left-0 z-50 -translate-x-full lg:translate-x-0'}
+        `} role="complementary" aria-label="Customer navigation sidebar">
           <div className="flex flex-col h-full">
             {/* Logo */}
             <div className="flex items-center justify-between h-16 px-6 border-b border-white/20 dark:border-gray-700/50">
@@ -107,6 +108,7 @@ function CustomerLayoutInner({ children }: CustomerLayoutProps) {
                 size="sm"
                 className="lg:hidden"
                 onClick={() => setSidebarOpen(false)}
+                aria-label="Close navigation menu"
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -168,12 +170,12 @@ function CustomerLayoutInner({ children }: CustomerLayoutProps) {
               </Button>
             </div>
           </div>
-        </div>
+        </aside>
 
         {/* Main content */}
-        <div className="lg:pl-64">
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen">
           {/* Top header */}
-          <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-white/20 dark:border-gray-700/50 shadow-sm transition-colors duration-300">
+          <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-white/20 dark:border-gray-700/50 shadow-sm transition-colors duration-300 sticky top-0 z-20 flex-shrink-0" role="banner">
             <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
               <div className="flex items-center space-x-4">
                 <Button
@@ -181,6 +183,9 @@ function CustomerLayoutInner({ children }: CustomerLayoutProps) {
                   size="sm"
                   className="lg:hidden hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
                   onClick={() => setSidebarOpen(true)}
+                  aria-label="Open navigation menu"
+                  aria-expanded={sidebarOpen}
+                  aria-controls="navigation"
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
@@ -233,7 +238,7 @@ function CustomerLayoutInner({ children }: CustomerLayoutProps) {
           </header>
 
           {/* Page content */}
-          <main id="main-content" className="flex-1" role="main">
+          <main id="main-content" className="flex-1 overflow-auto" role="main">
             {children}
           </main>
         </div>

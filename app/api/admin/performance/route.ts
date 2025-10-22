@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       },
       cache: {
         stats: cacheStats,
-        totalHitRate: this.calculateOverallCacheHitRate(cacheStats),
+        totalHitRate: calculateOverallCacheHitRate(cacheStats),
         totalSize: Object.values(cacheStats).reduce((sum, stat) => sum + stat.size, 0)
       },
       security: {
@@ -123,17 +123,18 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  private static calculateOverallCacheHitRate(cacheStats: any): number {
-    let totalHits = 0
-    let totalRequests = 0
+}
 
-    Object.values(cacheStats).forEach((stat: any) => {
-      totalHits += stat.hits
-      totalRequests += stat.hits + stat.misses
-    })
+function calculateOverallCacheHitRate(cacheStats: any): number {
+  let totalHits = 0
+  let totalRequests = 0
 
-    return totalRequests > 0 ? totalHits / totalRequests : 0
-  }
+  Object.values(cacheStats).forEach((stat: any) => {
+    totalHits += stat.hits
+    totalRequests += stat.hits + stat.misses
+  })
+
+  return totalRequests > 0 ? totalHits / totalRequests : 0
 }
 
 /**

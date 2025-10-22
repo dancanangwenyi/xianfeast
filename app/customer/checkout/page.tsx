@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+
+// Disable static generation for this page
+export const dynamic = 'force-dynamic'
 import { useRouter } from "next/navigation"
 import { CustomerLayout } from "@/components/customer/layout/customer-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,13 +29,7 @@ import {
   ChefHat
 } from "lucide-react"
 import Link from "next/link"
-import { RadioGroup } from "@radix-ui/react-dropdown-menu"
-import { RadioGroupItem } from "@/components/ui/radio-group"
-import { RadioGroupItem } from "@/components/ui/radio-group"
-import { RadioGroup } from "@radix-ui/react-dropdown-menu"
-import { RadioGroup } from "@radix-ui/react-dropdown-menu"
-import { RadioGroupItem } from "@/components/ui/radio-group"
-import { RadioGroup } from "@radix-ui/react-dropdown-menu"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface DeliveryOption {
   id: string
@@ -48,7 +45,7 @@ interface OrderSchedule {
   notes?: string
 }
 
-export default function CustomerCheckoutPage() {
+function CheckoutContent() {
   const router = useRouter()
   const { 
     items, 
@@ -241,7 +238,7 @@ export default function CustomerCheckoutPage() {
 
   const totals = calculateTotal()
 
-  if (cartLoading) {
+  if (!mounted || cartLoading) {
     return (
       <CustomerLayout>
         <div className="p-6">
@@ -559,4 +556,33 @@ export default function CustomerCheckoutPage() {
       </div>
     </CustomerLayout>
   )
+}
+
+export default function CustomerCheckoutPage() {
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <CustomerLayout>
+        <div className="p-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 bg-gray-200 rounded w-48"></div>
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-32 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </CustomerLayout>
+    )
+  }
+
+  return <CheckoutContent />
 }

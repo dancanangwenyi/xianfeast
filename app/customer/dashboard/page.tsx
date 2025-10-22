@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CustomerLayout } from "@/components/customer/layout/customer-layout"
-import { ResponsiveContainer, ResponsiveGrid, ResponsiveText } from "@/components/ui/responsive-container"
+
 import { 
   Store, 
   Clock, 
@@ -55,8 +55,40 @@ export default function CustomerDashboardPage() {
 
   useEffect(() => {
     setMounted(true)
-    loadDashboardData()
+    checkAuthAndLoadData()
   }, [])
+
+  const checkAuthAndLoadData = async () => {
+    try {
+      // First check if user is authenticated
+      const authResponse = await fetch("/api/auth/verify-session")
+      
+      if (!authResponse.ok) {
+        // Not authenticated, redirect to login
+        router.push("/customer/login")
+        return
+      }
+
+      const sessionData = await authResponse.json()
+      
+      // Check if user has customer role
+      if (!sessionData.roles?.includes("customer")) {
+        // Not a customer, redirect to appropriate dashboard
+        if (sessionData.roles?.includes("super_admin")) {
+          router.push("/admin/dashboard")
+        } else {
+          router.push("/login")
+        }
+        return
+      }
+
+      // User is authenticated as customer, load dashboard data
+      await loadDashboardData()
+    } catch (error) {
+      console.error("Auth check error:", error)
+      router.push("/customer/login")
+    }
+  }
 
   const loadDashboardData = async () => {
     try {
@@ -136,7 +168,7 @@ export default function CustomerDashboardPage() {
       <CustomerLayout>
         <div className="p-6 text-center">
           <div className="text-red-600 mb-4">{error}</div>
-          <Button onClick={loadDashboardData}>Try Again</Button>
+          <Button onClick={checkAuthAndLoadData}>Try Again</Button>
         </div>
       </CustomerLayout>
     )
@@ -156,19 +188,21 @@ export default function CustomerDashboardPage() {
 
   return (
     <CustomerLayout>
-      <ResponsiveContainer>
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Welcome Section */}
-        <div className="mb-6 sm:mb-8">
-          <ResponsiveText size="2xl" weight="bold" className="mb-2 animate-in fade-in duration-500">
-            Welcome back, {customer.name}! 👋
-          </ResponsiveText>
-          <ResponsiveText size="base" color="secondary" className="animate-in fade-in duration-700 delay-100">
-            Ready to discover your next favorite meal?
-          </ResponsiveText>
+        <div className="space-y-4">
+          <div className="animate-in fade-in duration-500">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              Welcome back, {customer.name}! 👋
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 animate-in fade-in duration-700 delay-100">
+              Ready to discover your next favorite meal?
+            </p>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <ResponsiveGrid cols={{ default: 1, sm: 2, lg: 4 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card className="hover:shadow-lg transition-all duration-300 animate-in slide-in-from-bottom-4 delay-200 dark:bg-gray-800 dark:border-gray-700">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
@@ -226,10 +260,10 @@ export default function CustomerDashboardPage() {
               </div>
             </CardContent>
           </Card>
-        </ResponsiveGrid>
+        </div>
 
         {/* Quick Actions */}
-        <ResponsiveGrid cols={{ default: 1, md: 3 }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <Link href="/customer/stalls">
               <CardHeader>
@@ -289,9 +323,9 @@ export default function CustomerDashboardPage() {
               </CardContent>
             </Link>
           </Card>
-        </ResponsiveGrid>
+        </div>
 
-        <ResponsiveGrid cols={{ default: 1, lg: 2 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
           {/* Upcoming Orders */}
           <Card>
             <CardHeader>
@@ -381,7 +415,7 @@ export default function CustomerDashboardPage() {
               )}
             </CardContent>
           </Card>
-        </ResponsiveGrid>
+        </div>
 
         {/* Recent Activity */}
         {recent_orders.length > 0 && (
@@ -411,7 +445,7 @@ export default function CustomerDashboardPage() {
             </CardContent>
           </Card>
         )}
-      </ResponsiveContainer>
+      </div>
     </CustomerLayout>
   )
 }
