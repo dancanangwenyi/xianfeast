@@ -26,6 +26,8 @@ export const TABLE_NAMES = {
   ORDERS: process.env.DYNAMODB_TABLE_ORDERS || 'xianfeast_orders',
   ORDER_ITEMS: process.env.DYNAMODB_TABLE_ORDER_ITEMS || 'xianfeast_order_items',
   MAGIC_LINKS: process.env.DYNAMODB_TABLE_MAGIC_LINKS || 'xianfeast_magic_links',
+  CUSTOMER_MAGIC_LINKS: process.env.DYNAMODB_TABLE_CUSTOMER_MAGIC_LINKS || 'xianfeast_customer_magic_links',
+  CARTS: process.env.DYNAMODB_TABLE_CARTS || 'xianfeast_carts',
   OTP_CODES: process.env.DYNAMODB_TABLE_OTP_CODES || 'xianfeast_otp_codes',
   ANALYTICS_EVENTS: process.env.DYNAMODB_TABLE_ANALYTICS_EVENTS || 'xianfeast_analytics_events',
   WEBHOOKS: process.env.DYNAMODB_TABLE_WEBHOOKS || 'xianfeast_webhooks',

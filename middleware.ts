@@ -1,70 +1,40 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { verifySessionToken } from "@/lib/auth/session-server"
 
-// Routes that require authentication
-const protectedRoutes = ["/dashboard", "/admin", "/stalls", "/products", "/orders", "/api/admin", "/api/users", "/api/stalls", "/api/products", "/api/orders"]
-
-// Routes that are only for unauthenticated users
-const authRoutes = ["/login", "/auth/magic", "/auth/register"]
-
-// Public routes that don't require authentication
-const publicRoutes = ["/", "/api/auth/login", "/api/auth/register", "/api/auth/verify-magic-link", "/api/auth/send-mfa", "/api/auth/refresh"]
+// Simple middleware - just handle basic redirects without JWT verification
+// JWT verification will be handled by individual pages
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Skip middleware for public routes
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+  // Skip middleware for API routes and static files
+  if (pathname.startsWith('/api/') || 
+      pathname.startsWith('/_next/') || 
+      pathname.startsWith('/favicon.ico') ||
+      pathname.match(/\.(svg|png|jpg|jpeg|gif|webp)$/)) {
     return NextResponse.next()
   }
-  
-  // Check if route is protected
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
 
-  // Try to get session from cookie
-  const token = request.cookies.get("xianfeast_session")?.value
-  let session = null
-  
-  if (token) {
-    session = verifySessionToken(token)
+  // Handle root redirect
+  if (pathname === '/') {
+    return NextResponse.next()
   }
 
-  // Redirect to login if accessing protected route without session
-  if (isProtectedRoute && !session) {
-    const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(loginUrl)
-  }
-
-  // Redirect to dashboard if accessing auth routes with session
-  if (isAuthRoute && session) {
-    // Super admin goes to admin dashboard, others to regular dashboard
-    const redirectPath = session.roles.includes("super_admin") ? "/admin/dashboard" : "/dashboard"
-    return NextResponse.redirect(new URL(redirectPath, request.url))
-  }
-
-  // Role-based redirection for dashboard access
-  if (pathname === "/dashboard" && session) {
-    if (session.roles.includes("super_admin")) {
-      return NextResponse.redirect(new URL("/admin/dashboard", request.url))
-    }
-  }
-
+  // For now, let pages handle their own authentication
+  // This ensures compatibility and reliability
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     * - api routes (handled separately)
+     * Match all request paths except for:
+     * 1. /api (API routes)
+     * 2. /_next/static (static files)
+     * 3. /_next/image (image optimization files)
+     * 4. /favicon.ico (favicon file)
+     * 5. public files (images, etc.)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

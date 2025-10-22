@@ -429,6 +429,12 @@ export default function AdminOverview() {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="w-full justify-start">
+                <Link href="/admin/dashboard/customers">
+                  <Users className="h-4 w-4 mr-2" />
+                  Manage Customers
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full justify-start">
                 <Link href="/admin/dashboard/approvals">
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Review Approvals

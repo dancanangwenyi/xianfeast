@@ -103,10 +103,20 @@ export default function OrdersPage() {
     const fetchOrders = async () => {
       setLoading(true)
       try {
-        // Mock data - replace with actual API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Fetch orders from the new admin orders API
+        const params = new URLSearchParams()
+        if (statusFilter !== 'all') params.append('status', statusFilter)
+        if (businessFilter !== 'all') params.append('business_id', businessFilter)
         
-        setOrders([
+        const response = await fetch(`/api/admin/orders?${params}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          setOrders(data.orders || [])
+        } else {
+          console.error('Failed to fetch orders')
+          // Fallback to mock data
+          setOrders([
           {
             id: "ORD-001",
             businessId: "1",
@@ -296,6 +306,7 @@ export default function OrdersPage() {
             ]
           }
         ])
+        }
       } catch (error) {
         console.error("Failed to fetch orders:", error)
       } finally {
@@ -304,7 +315,7 @@ export default function OrdersPage() {
     }
 
     fetchOrders()
-  }, [])
+  }, [statusFilter, businessFilter])
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||

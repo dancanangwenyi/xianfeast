@@ -24,6 +24,27 @@ export interface User {
   password_change_required?: boolean
   created_at: string
   updated_at: string
+  // Customer-specific fields
+  customer_preferences?: CustomerPreferences
+  customer_stats?: CustomerStats
+}
+
+export interface CustomerPreferences {
+  dietary_restrictions: string[]
+  favorite_stalls: string[]
+  default_delivery_address?: string
+  notification_preferences: {
+    email: boolean
+    sms: boolean
+    push: boolean
+  }
+}
+
+export interface CustomerStats {
+  total_orders: number
+  total_spent_cents: number
+  favorite_products: string[]
+  last_order_date?: string
 }
 
 export interface Role {
@@ -303,4 +324,134 @@ export async function getUserWithRoles(email: string): Promise<(User & { roles: 
  */
 export async function updateUserLastLogin(userId: string): Promise<void> {
   await updateUser(userId, { last_login: new Date().toISOString() })
+}
+
+/**
+ * Create customer user with default preferences
+ */
+export async function createCustomerUser(userData: {
+  email: string
+  name: string
+  hashed_password?: string
+}): Promise<User> {
+  const defaultPreferences: CustomerPreferences = {
+    dietary_restrictions: [],
+    favorite_stalls: [],
+    notification_preferences: {
+      email: true,
+      sms: false,
+      push: true
+    }
+  }
+
+  const defaultStats: CustomerStats = {
+    total_orders: 0,
+    total_spent_cents: 0,
+    favorite_products: []
+  }
+
+  const customerUser: Omit<User, 'id' | 'created_at' | 'updated_at'> = {
+    ...userData,
+    roles_json: JSON.stringify(['customer']),
+    mfa_enabled: false,
+    status: 'pending',
+    customer_preferences: defaultPreferences,
+    customer_stats: defaultStats
+  }
+
+  return await createUser(customerUser)
+}
+
+/**
+ * Update customer preferences
+ */
+export async function updateCustomerPreferences(
+  userId: string, 
+  preferences: Partial<CustomerPreferences>
+): Promise<User | null> {
+  const user = await getUserById(userId)
+  if (!user) {
+    return null
+  }
+
+  const updatedPreferences = {
+    ...user.customer_preferences,
+    ...preferences
+  }
+
+  return await updateUser(userId, { customer_preferences: updatedPreferences })
+}
+
+/**
+ * Update customer statistics
+ */
+export async function updateCustomerStats(
+  userId: string, 
+  stats: Partial<CustomerStats>
+): Promise<User | null> {
+  const user = await getUserById(userId)
+  if (!user) {
+    return null
+  }
+
+  const updatedStats = {
+    ...user.customer_stats,
+    ...stats
+  }
+
+  return await updateUser(userId, { customer_stats: updatedStats })
+}
+
+/**
+ * Get customers only (users with customer role)
+ */
+export async function getCustomers(): Promise<User[]> {
+  const command = new ScanCommand({
+    TableName: TABLE_NAMES.USERS,
+    FilterExpression: 'contains(roles_json, :customer_role)',
+    ExpressionAttributeValues: {
+      ':customer_role': 'customer'
+    }
+  })
+
+  const result = await dynamoClient.send(command)
+  return result.Items as User[] || []
+}
+
+/**
+ * Create customer role if it doesn't exist
+ */
+export async function ensureCustomerRole(): Promise<Role> {
+  // Check if customer role exists
+  const existingRoles = await getAllRoles()
+  const customerRole = existingRoles.find(role => role.role_name === 'customer')
+  
+  if (customerRole) {
+    return customerRole
+  }
+
+  // Create customer role with basic permissions
+  const customerRoleData: Omit<Role, 'id' | 'created_at'> = {
+    business_id: 'global', // Global role for customers
+    role_name: 'customer',
+    permissions_csv: 'orders:create,orders:view,products:view,stalls:view'
+  }
+
+  return await createRole(customerRoleData)
+}
+
+/**
+ * Assign customer role to user
+ */
+export async function assignCustomerRole(userId: string): Promise<void> {
+  const customerRole = await ensureCustomerRole()
+  
+  const userRoleData: UserRole = {
+    role_id: customerRole.id,
+    business_id: 'global',
+    user_id: userId,
+    assigned_at: new Date().toISOString()
+  }
+
+  await createUserRole(userRoleData)
 }
