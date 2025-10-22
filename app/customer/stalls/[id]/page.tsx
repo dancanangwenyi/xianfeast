@@ -479,7 +479,6 @@ function StallDetailContent() {
           </div>
         </div>
       </div>
-    </div>
   )
 }
 
